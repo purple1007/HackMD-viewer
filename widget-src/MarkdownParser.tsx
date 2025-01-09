@@ -1,4 +1,7 @@
-// 在字體常數定義
+/// <reference types="@figma/widget-typings" />
+const { widget } = figma
+const { Span, Text } = widget
+
 export const MARKDOWN_CONSTANTS = {
   HEADING_SIZES: {
     1: 32,
@@ -10,6 +13,10 @@ export const MARKDOWN_CONSTANTS = {
   },
   REGULAR_FONT_SIZE: 16,
 } as const;
+export const CONTAINER_SIZE = {
+  WIDTH: 600,
+  PADDING: 16,
+}
 
 interface Block {
   type: string;
@@ -26,28 +33,26 @@ interface TextSegment {
   };
 }
 
-
 interface StyledBlock extends Block {
   segments?: TextSegment[];
+  style?: {
+    bold?: boolean;
+    italic?: boolean;
+    code?: boolean;
+  };
 }
 
-/// Markdown 解析器
 export class MarkdownParser {
   static parseInline(text: string) {
-    const segments: Array<{
-      text: string;
-      style?: { bold?: boolean; italic?: boolean; code?: boolean; highlight?: boolean };
-    }> = [];
-  
-    let currentText = '';
-    let inBold = false;
-    let inItalic = false;
-    let inCode = false;
-    let inHighlight = false;
-    let i = 0;
-  
+    const segments: Array<{ text: string; style?: { bold?: boolean; italic?: boolean; code?: boolean; highlight?: boolean } }> = []
+    let currentText = ''
+    let inBold = false
+    let inItalic = false
+    let inCode = false
+    let inHighlight = false
+    let i = 0
+
     while (i < text.length) {
-      // 偵測程式碼符號 `
       if (text[i] === '`' && !inBold && !inItalic) {
         if (currentText) {
           segments.push({
@@ -60,10 +65,8 @@ export class MarkdownParser {
         i++;
         continue;
       }
-  
-      // 偵測 ==...==
+
       if (text.startsWith('==', i)) {
-        // 先將前面累積文字丟進 segments（屬於之前的 inHighlight 狀態）
         if (currentText) {
           segments.push({
             text: currentText.replace(/==/g, ''),
@@ -75,8 +78,7 @@ export class MarkdownParser {
         i += 2;
         continue;
       }
-  
-      // 偵測 **...**
+
       if (text.startsWith('**', i) && !inCode) {
         if (currentText) {
           segments.push({
@@ -89,8 +91,7 @@ export class MarkdownParser {
         i += 2;
         continue;
       }
-  
-      // 偵測 *...*
+
       if (text[i] === '*' && !text.startsWith('**', i) && !inCode) {
         if (currentText) {
           segments.push({
@@ -103,27 +104,25 @@ export class MarkdownParser {
         i++;
         continue;
       }
-  
-      // 若以上檢測都不符合，累積字元
+
       currentText += text[i];
       i++;
     }
-  
-    // 迴圈結束後，如果還有累積文字，加入 segments
+
     if (currentText) {
       segments.push({
         text: currentText.replace(/==/g, '').replace(/[`*]/g, ''),
         style: { bold: inBold, italic: inItalic, code: inCode, highlight: inHighlight },
       });
     }
-  
+
     return segments;
   }
-  
+
   static cleanMarkdown(text: string): string {
     return text.replace(/[`*]/g, '').trim();
   }
-  
+
   static parseBlock(markdown: string) {
     const blocks: StyledBlock[] = [];
     const lines = markdown.split('\n')
@@ -191,13 +190,48 @@ export class MarkdownParser {
         }
         continue;
       }
-      
     }
 
     if (currentBlock) {
-      blocks.push(currentBlock)
+      blocks.push(currentBlock);
     }
 
-    return blocks
+    return blocks;
+  }
+
+  static renderBlock(block: StyledBlock, index: number) {
+    return (
+      <Text 
+        key={index}
+        width={CONTAINER_SIZE.WIDTH-CONTAINER_SIZE.PADDING*2}
+        fontSize={
+          block.type === 'heading' 
+          ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level as keyof typeof MARKDOWN_CONSTANTS.HEADING_SIZES] 
+          : MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE
+        }
+        fontWeight={block.type === 'heading' ? 'extra-bold' : 'normal'}
+        horizontalAlignText="left"
+        lineHeight={
+          block.type === 'heading' 
+          ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level as keyof typeof MARKDOWN_CONSTANTS.HEADING_SIZES] * 1.6
+          : 28
+        }
+      >
+        {block.segments ? (
+          block.segments.map((segment, segIndex) => (
+            <Span 
+              key={`${index}-${segIndex}`}
+              fontWeight={segment.style?.bold ? 'bold' : 'normal'}
+              fill={segment.style?.highlight ? "#FF0000" : "#000000"}
+              fontSize={segment.style?.highlight ? 40 : 16}
+            >
+              {segment.text}
+            </Span>
+          ))
+        ) : (
+          block.content
+        )}
+      </Text>
+    );
   }
 }

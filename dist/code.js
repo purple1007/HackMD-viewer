@@ -20,7 +20,9 @@
     });
   };
 
-  // widget-src/MarkdownParser.ts
+  // widget-src/MarkdownParser.tsx
+  var { widget } = figma;
+  var { Span, Text } = widget;
   var MARKDOWN_CONSTANTS = {
     HEADING_SIZES: {
       1: 32,
@@ -31,6 +33,10 @@
       6: 12
     },
     REGULAR_FONT_SIZE: 16
+  };
+  var CONTAINER_SIZE = {
+    WIDTH: 600,
+    PADDING: 16
   };
   var MarkdownParser = class {
     static parseInline(text) {
@@ -169,15 +175,29 @@
       }
       return blocks;
     }
+    static renderBlock(block, index) {
+      return /* @__PURE__ */ figma.widget.h(Text, {
+        key: index,
+        width: CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2,
+        fontSize: block.type === "heading" ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level] : MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE,
+        fontWeight: block.type === "heading" ? "extra-bold" : "normal",
+        horizontalAlignText: "left",
+        lineHeight: block.type === "heading" ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level] * 1.6 : 28
+      }, block.segments ? block.segments.map((segment, segIndex) => {
+        var _a, _b, _c;
+        return /* @__PURE__ */ figma.widget.h(Span, {
+          key: `${index}-${segIndex}`,
+          fontWeight: ((_a = segment.style) == null ? void 0 : _a.bold) ? "bold" : "normal",
+          fill: ((_b = segment.style) == null ? void 0 : _b.highlight) ? "#FF0000" : "#000000",
+          fontSize: ((_c = segment.style) == null ? void 0 : _c.highlight) ? 40 : 16
+        }, segment.text);
+      }) : block.content);
+    }
   };
 
   // widget-src/code.tsx
-  var { widget } = figma;
-  var { AutoLayout, Span, Text, Input, useSyncedState, usePropertyMenu } = widget;
-  var CONTAINER_SIZE = {
-    WIDTH: 600,
-    PADDING: 16
-  };
+  var { widget: widget2 } = figma;
+  var { AutoLayout, Span: Span2, Text: Text2, Input, useSyncedState, usePropertyMenu } = widget2;
   var refreshIcon = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.65 2.35a8 8 0 1 0 1.4 1.4L13.65 2.35z" fill="currentColor"/></svg>`;
   var keyIcon = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.33a4.67 4.67 0 0 1 4.67 4.67A4.67 4.67 0 0 1 8 10.67 4.67 4.67 0 0 1 3.33 6 4.67 4.67 0 0 1 8 1.33z" fill="currentColor"/></svg>`;
   function HackMDViewer() {
@@ -266,10 +286,10 @@
     }));
     const renderContent = () => {
       if (loading) {
-        return /* @__PURE__ */ figma.widget.h(AutoLayout, null, /* @__PURE__ */ figma.widget.h(Text, null, "\u8F09\u5165\u4E2D..."));
+        return /* @__PURE__ */ figma.widget.h(AutoLayout, null, /* @__PURE__ */ figma.widget.h(Text2, null, "\u8F09\u5165\u4E2D..."));
       }
       if (error) {
-        return /* @__PURE__ */ figma.widget.h(AutoLayout, null, /* @__PURE__ */ figma.widget.h(Text, {
+        return /* @__PURE__ */ figma.widget.h(AutoLayout, null, /* @__PURE__ */ figma.widget.h(Text2, {
           fill: "#FF0000"
         }, error));
       }
@@ -279,22 +299,7 @@
         return /* @__PURE__ */ figma.widget.h(AutoLayout, {
           direction: "vertical",
           fill: "#ffffff"
-        }, blocks.map((block, index) => /* @__PURE__ */ figma.widget.h(Text, {
-          key: index,
-          width: CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2,
-          fontSize: block.type === "heading" ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level] : MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE,
-          fontWeight: block.type === "heading" ? "extra-bold" : "normal",
-          horizontalAlignText: "left",
-          lineHeight: block.type === "heading" ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level] * 1.6 : 28
-        }, block.segments ? block.segments.map((segment, segIndex) => {
-          var _a, _b, _c;
-          return /* @__PURE__ */ figma.widget.h(Span, {
-            key: `${index}-${segIndex}`,
-            fontWeight: ((_a = segment.style) == null ? void 0 : _a.bold) ? "bold" : "normal",
-            fill: ((_b = segment.style) == null ? void 0 : _b.highlight) ? "#FF0000" : "#000000",
-            fontSize: ((_c = segment.style) == null ? void 0 : _c.highlight) ? 40 : 16
-          }, segment.text);
-        }) : block.content)));
+        }, blocks.map((block, index) => MarkdownParser.renderBlock(block, index)));
       }
       return null;
     };
@@ -321,9 +326,9 @@
         fetchContent();
       },
       width: "fill-parent"
-    })), renderContent(), !apiKey && /* @__PURE__ */ figma.widget.h(AutoLayout, null, /* @__PURE__ */ figma.widget.h(Text, {
+    })), renderContent(), !apiKey && /* @__PURE__ */ figma.widget.h(AutoLayout, null, /* @__PURE__ */ figma.widget.h(Text2, {
       fill: "#FF6B00"
     }, "\u63D0\u793A\uFF1A\u8A2D\u5B9A API Key \u53EF\u4EE5\u5B58\u53D6\u79C1\u4EBA\u6587\u4EF6")));
   }
-  widget.register(HackMDViewer);
+  widget2.register(HackMDViewer);
 })();

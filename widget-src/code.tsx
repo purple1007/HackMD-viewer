@@ -1,14 +1,6 @@
-/// <reference types="@figma/widget-typings" />
-import { MarkdownParser, MARKDOWN_CONSTANTS} from './MarkdownParser'
-
+import { MarkdownParser, CONTAINER_SIZE} from './MarkdownParser'
 const { widget } = figma
 const { AutoLayout,Span, Text, Input, useSyncedState, usePropertyMenu } = widget
-
-const CONTAINER_SIZE = {
-  WIDTH: 600,
-  PADDING: 16,
-}
-
 
 const refreshIcon = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.65 2.35a8 8 0 1 0 1.4 1.4L13.65 2.35z" fill="currentColor"/></svg>`
 const keyIcon = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.33a4.67 4.67 0 0 1 4.67 4.67A4.67 4.67 0 0 1 8 10.67 4.67 4.67 0 0 1 3.33 6 4.67 4.67 0 0 1 8 1.33z" fill="currentColor"/></svg>`
@@ -135,40 +127,9 @@ function HackMDViewer() {
       const blocks = MarkdownParser.parseBlock(content)
       console.log('Parsed blocks:', blocks)
       return (
+        // 內文渲染
         <AutoLayout direction="vertical" fill="#ffffff">
-          {blocks.map((block, index) => (
-            <Text 
-              key={index}
-              width={CONTAINER_SIZE.WIDTH-CONTAINER_SIZE.PADDING*2}
-              fontSize={
-                block.type === 'heading' 
-                ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level as keyof typeof MARKDOWN_CONSTANTS.HEADING_SIZES] 
-                : MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE
-              }
-              fontWeight={block.type === 'heading' ? 'extra-bold' : 'normal'}
-              horizontalAlignText="left"
-              lineHeight={
-                block.type === 'heading' 
-                ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level as keyof typeof MARKDOWN_CONSTANTS.HEADING_SIZES] * 1.6
-                : 28
-              }
-            >
-              {block.segments ? (
-                block.segments.map((segment, segIndex) => (
-                  <Span 
-                    key={`${index}-${segIndex}`}
-                    fontWeight={segment.style?.bold ? 'bold' : 'normal'}
-                    fill={segment.style?.highlight ? "#FF0000" : "#000000"}
-                    fontSize={segment.style?.highlight ? 40 : 16}
-                  >
-                    {segment.text}
-                  </Span>
-                ))
-                )   : (
-                block.content
-              )}
-            </Text>
-          ))} 
+         {blocks.map((block, index) => MarkdownParser.renderBlock(block, index))}
         </AutoLayout>
       )
     }
@@ -176,8 +137,7 @@ function HackMDViewer() {
   }
 
   return (
-    
-
+  
     <AutoLayout
       direction="vertical"
       padding={CONTAINER_SIZE.PADDING}
