@@ -109,26 +109,7 @@ export class MarkdownParser {
         i += 2;
         continue;
       }
-      
-      // 處理 • [ ] 顯示為 □
-      if (text.startsWith('[ ]', i) && !inCode) {
-        if (currentText) {
-          segments.push({
-            text: currentText.replace(/[`*]/g, ''),
-            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough, checkedBox: inCheckedBox },
-          });
-          currentText = '';
-        }
-        segments.push({
-          text: '□',
-          style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough },
-        });
-        inCheckedBox = !inCheckedBox;
-        i += 5; // 跳過 '• [ ]'
-        continue;
-      }
-      
-
+    
       // 斜體 *文字*
       if (text[i] === '*' && !text.startsWith('**', i) && !inCode) {
         if (currentText) {
@@ -143,8 +124,45 @@ export class MarkdownParser {
         continue;
       }
 
+      // 處理 • [ ] 顯示為 □
+      if (text.startsWith('[ ]', i) && !inCode) {
+        if (currentText) {
+          segments.push({
+            text: currentText,
+            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough },
+          });
+          currentText = '';
+        }
+        segments.push({
+          text: '□ ',  // 加上空格
+          style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough },
+        });
+        i += 3; // 只跳過 '[ ]'
+        continue;
+      }
+      
+      // 處理 • [x] 顯示為 ☑︎
+      if (text.startsWith('[x]', i) && !inCode) {
+        if (currentText) {
+          segments.push({
+            text: currentText.replace(/[`*]/g, ''),
+            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough, checkedBox: inCheckedBox },
+          });
+          currentText = '';
+        }
+        segments.push({
+          text: '☑︎',
+          style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough },
+        });
+        inCheckedBox = !inCheckedBox;
+        i += 3; // 跳過 '• [x]'
+        continue;
+      }
+
+
       currentText += text[i];
       i++;
+      
     }
 
     if (currentText) {
@@ -263,51 +281,42 @@ export class MarkdownParser {
   static renderBlock(block: StyledBlock, index: number) {
     // 列表
     if (block.type === 'list') {
-      const lines = block.content.split('\n');
-      const formattedContent = lines.map(line => `• ${line}`).join('\n');
-      
       return (
-        <Text 
+        <Text
           key={index}
-          width={CONTAINER_SIZE.WIDTH-CONTAINER_SIZE.PADDING*2}
+          width={CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2}
           fontSize={MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE}
           lineHeight={28}
         >
-          {block.segments ? (
-            block.segments.map((segment, segIndex) => (
-              <Span 
-                key={`${index}-${segIndex}`}
-                {...MarkdownParser.getTextStyle(segment.style)}
-              >
-                {`• ${segment.text}${segIndex < block.segments!.length - 1 ? '\n' : ''}`}
-              </Span>
-            ))
-          ) : (
-            formattedContent
-          )}
+          {block.segments?.map((segment, segIndex) => (
+          <Span key={segIndex} {...MarkdownParser.getTextStyle(segment.style)}>
+            {segIndex === 0 ? '・' : ''}
+            {segment.text}
+          </Span>
+        ))}
         </Text>
       );
     }
     return (
-      <Text 
+      <Text
         key={index}
-        width={CONTAINER_SIZE.WIDTH-CONTAINER_SIZE.PADDING*2}
+        width={CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2}
         fill={"#232323"}
         fontSize={
-          block.type === 'heading' 
-          ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level as keyof typeof MARKDOWN_CONSTANTS.HEADING_SIZES] 
-          : MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE
+          block.type === 'heading'
+            ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level as keyof typeof MARKDOWN_CONSTANTS.HEADING_SIZES]
+            : MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE
         }
         fontWeight={block.type === 'heading' ? 'extra-bold' : 'normal'}
         lineHeight={
-          block.type === 'heading' 
-          ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level as keyof typeof MARKDOWN_CONSTANTS.HEADING_SIZES] * 1.6
-          : 28
+          block.type === 'heading'
+            ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level as keyof typeof MARKDOWN_CONSTANTS.HEADING_SIZES] * 1.6
+            : 28
         }
       >
         {block.segments ? (
           block.segments.map((segment, segIndex) => (
-            <Span 
+            <Span
               key={`${index}-${segIndex}`}
               {...MarkdownParser.getTextStyle(segment.style)}
             >
