@@ -1,5 +1,5 @@
 const { widget } = figma
-const { Span, Text } = widget
+const { AutoLayout, Span, Text } = widget
 
 export const MARKDOWN_CONSTANTS = {
   HEADING_SIZES: {
@@ -42,24 +42,57 @@ interface StyledBlock {
 }
 
 export class MarkdownParser {
+
+// 新增處理勾選框的函式
+static parseCheckbox(text: string): TextSegment[] | null {
+  
+  // 匹配未勾選的項目 (包含 * [ ] 或 - [ ] 或純 [ ])
+  const uncheckedRegex = /^(?:[*-]\s*)?\[\s\]\s*(.*)$/;
+  const uncheckedMatch = text.match(uncheckedRegex);
+  if (uncheckedMatch) {
+    return [{
+      text: `☐ ${uncheckedMatch[1]}`,
+      style: { checkedBox: false }
+    }];
+  }
+
+  // 匹配已勾選的項目 (包含 * [x] 或 - [x] 或純 [x])
+  const checkedRegex = /^(?:[*-]\s*)?\[x\]\s*(.*)$/i;
+  const checkedMatch = text.match(checkedRegex);
+  if (checkedMatch) {
+    return [{
+      text: `☑︎ ${checkedMatch[1]}`,
+      style: { checkedBox: true }
+    }];
+  }
+
+  return null;
+}
+
   static parseInline(text: string) {
-    const segments: TextSegment[] = []
+    const segments: TextSegment[] = [];
+
     let currentText = ''
     let inBold = false
     let inItalic = false
     let inCode = false
     let inHighlight = false
     let inStrikethrough = false
-    let inCheckedBox = false
     let i = 0
-
-    // code inline `文字`
+    const checkboxSegments = this.parseCheckbox(text);
+    if (checkboxSegments) {
+      return checkboxSegments;
+    }
+  
+    
     while (i < text.length) {
+
+      // code inline `文字`
       if (text[i] === '`' && !inBold && !inItalic) {
         if (currentText) {
           segments.push({
             text: currentText.replace(/[`*]/g, ''),
-            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough, checkedBox: inCheckedBox },
+            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough },
           });
           currentText = '';
         }
@@ -73,7 +106,7 @@ export class MarkdownParser {
         if (currentText) {
           segments.push({
             text: currentText.replace(/==/g, ''),
-            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough, checkedBox: inCheckedBox },
+            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough },
           });
           currentText = '';
         }
@@ -87,7 +120,7 @@ export class MarkdownParser {
         if (currentText) {
           segments.push({
             text: currentText.replace(/[`*]/g, ''),
-            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough, checkedBox: inCheckedBox },
+            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough },
           });
           currentText = '';
         }
@@ -101,7 +134,7 @@ export class MarkdownParser {
         if (currentText) {
           segments.push({
             text: currentText.replace(/[`~]/g, ''),
-            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough, checkedBox: inCheckedBox },
+            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough},
           });
           currentText = '';
         }
@@ -115,7 +148,7 @@ export class MarkdownParser {
         if (currentText) {
           segments.push({
             text: currentText.replace(/[`*]/g, ''),
-            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough, checkedBox: inCheckedBox }
+            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough }
           });
           currentText = '';
         }
@@ -123,42 +156,6 @@ export class MarkdownParser {
         i++;
         continue;
       }
-
-      // 處理 • [ ] 顯示為 □
-      if (text.startsWith('[ ]', i) && !inCode) {
-        if (currentText) {
-          segments.push({
-            text: currentText,
-            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough },
-          });
-          currentText = '';
-        }
-        segments.push({
-          text: '□ ',  // 加上空格
-          style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough },
-        });
-        i += 3; // 只跳過 '[ ]'
-        continue;
-      }
-      
-      // 處理 • [x] 顯示為 ☑︎
-      if (text.startsWith('[x]', i) && !inCode) {
-        if (currentText) {
-          segments.push({
-            text: currentText.replace(/[`*]/g, ''),
-            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough, checkedBox: inCheckedBox },
-          });
-          currentText = '';
-        }
-        segments.push({
-          text: '☑︎',
-          style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough },
-        });
-        inCheckedBox = !inCheckedBox;
-        i += 3; // 跳過 '• [x]'
-        continue;
-      }
-
 
       currentText += text[i];
       i++;
@@ -168,7 +165,7 @@ export class MarkdownParser {
     if (currentText) {
       segments.push({
         text: currentText.replace(/==/g, '').replace(/[`*]/g, ''),
-        style: { bold: inBold, italic: inItalic, code: inCode, highlight: inHighlight, strikethrough: inStrikethrough, checkedBox: inCheckedBox },
+        style: { bold: inBold, italic: inItalic, code: inCode, highlight: inHighlight, strikethrough: inStrikethrough },
       });
     }
 
@@ -266,7 +263,8 @@ export class MarkdownParser {
       { bold?: boolean; 
         highlight?: boolean; 
         italic?: Boolean; 
-        strikethrough?: Boolean 
+        strikethrough?: Boolean;
+        checkedBox?: Boolean; 
       }) => {
     return {
       fontWeight: style?.bold ? 'bold' : 'normal' as 'bold' | 'normal',
@@ -282,20 +280,23 @@ export class MarkdownParser {
     // 列表
     if (block.type === 'list') {
       return (
-        <Text
+        <AutoLayout
           key={index}
+          direction="vertical"
           width={CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2}
-          fontSize={MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE}
-          lineHeight={28}
+          spacing={8}
         >
-          {block.segments?.map((segment, segIndex) => (
-          <Span key={segIndex} {...MarkdownParser.getTextStyle(segment.style)}>
-            {segIndex === 0 ? '・' : ''}
+        {block.segments?.map((segment, segIndex) => (
+          <Text 
+            key={segIndex}
+            {...MarkdownParser.getTextStyle(segment.style)}
+          >
+            <Span>・</Span>
             {segment.text}
-          </Span>
+          </Text>
         ))}
-        </Text>
-      );
+        </AutoLayout>
+      )
     }
     return (
       <Text
