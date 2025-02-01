@@ -40,6 +40,7 @@ interface StyledBlock {
     checked?: boolean;
     segments: TextSegment[];
     checkable?: boolean;
+    ordered?: boolean;
   }[];
   style?: {
     bold?: boolean;
@@ -175,6 +176,10 @@ export class MarkdownParser {
         continue
       }
 
+      // 在列表項處理區塊加入
+      const orderedListRegex = /^(\d+)\.\s+(.+)/
+      const orderedListMatch = line.match(orderedListRegex)
+
       // 列表項處理
       const uncheckedRegex = /^(?:[*-]\s*)?\[\s\]\s*(.*)$/
       const checkedRegex = /^(?:[*-]\s*)?\[x\]\s*(.*)$/i
@@ -185,17 +190,21 @@ export class MarkdownParser {
       const listMatch = line.match(listRegex)
 
       // 統一處理所有列表類型
-      if (uncheckedMatch || checkedMatch || listMatch) {
-        const match = checkedMatch || uncheckedMatch || listMatch
+      if (uncheckedMatch || checkedMatch || listMatch || orderedListMatch) {
+        const match = checkedMatch || uncheckedMatch || listMatch || orderedListMatch
         if (!match) continue;
-        const content = match[1]
+
+        // 取得內容 (針對有序列表要取第二個群組)
+        const content = orderedListMatch ? match[2] : match[1]
         const segments = this.parseInline(content)
         
         const listItem = {
           content: this.cleanMarkdown(content),
           checkable: Boolean(checkedMatch || uncheckedMatch),
           checked: Boolean(checkedMatch),
-          segments
+          segments,
+          ordered: Boolean(orderedListMatch),
+          number: orderedListMatch ? parseInt(match[1]) : undefined
         }
 
         if (currentBlock?.type !== 'list') {
@@ -276,7 +285,8 @@ export class MarkdownParser {
           key={index}
           direction="vertical"
           width={CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2}
-          spacing={8}
+          spacing={12}
+          padding={{ top:12, bottom: 12}}
         >
           {block.items?.map((item, itemIndex) => (
             <AutoLayout 
@@ -285,20 +295,28 @@ export class MarkdownParser {
               spacing={3} 
               verticalAlignItems="center" 
               width="fill-parent"
+              padding={{ left: 6}}
             >
-               {item.checkable ?  <SVG src={item.checked ? CheckIcon : UnCheckIcon} /> : <SVG src={Dot} />}
-              <Text width="fill-parent">
-                {item.segments?.map((segment, segIndex) => (
-                  <Span key={segIndex} {...MarkdownParser.getTextStyle(segment.style)}>
-                    {segment.text}
-                  </Span>
-                ))}
-              </Text>
+               {item.ordered ? (
+                  <Text fill="#232323" width={18}>{itemIndex+1}.</Text>
+                ) : (
+                  item.checkable ? 
+                    <SVG src={item.checked ? CheckIcon : UnCheckIcon}/> : 
+                    <SVG src={Dot} />
+                )}
+                <Text width="fill-parent">
+                  {item.segments?.map((segment, segIndex) => (
+                    <Span key={segIndex} {...MarkdownParser.getTextStyle(segment.style)}>
+                      {segment.text}
+                    </Span>
+                  ))}
+                </Text>
             </AutoLayout>
           ))}
         </AutoLayout>
       )
     }
+
     return (
       <Text
         key={index}
