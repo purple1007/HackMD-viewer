@@ -1,5 +1,7 @@
 const { widget } = figma
-const { AutoLayout, Span, Text } = widget
+const { AutoLayout, Span, Text, SVG } = widget
+import { CheckIcon, UnCheckIcon, Dot } from './components/icons'
+
 
 export const MARKDOWN_CONSTANTS = {
   HEADING_SIZES: {
@@ -25,7 +27,6 @@ interface TextSegment {
     code?: boolean;
     highlight?: boolean;
     strikethrough?: boolean;
-    checkedBox?: boolean;
   };
 }
 
@@ -34,6 +35,12 @@ interface StyledBlock {
   type: string;
   content: string;
   level?: number;
+  items?: {
+    content: string;
+    checked?: boolean;
+    segments: TextSegment[];
+    checkable?: boolean;
+  }[];
   style?: {
     bold?: boolean;
     italic?: boolean;
@@ -43,31 +50,6 @@ interface StyledBlock {
 
 export class MarkdownParser {
 
-// 新增處理勾選框的函式
-static parseCheckbox(text: string): TextSegment[] | null {
-  
-  // 匹配未勾選的項目 (包含 * [ ] 或 - [ ] 或純 [ ])
-  const uncheckedRegex = /^(?:[*-]\s*)?\[\s\]\s*(.*)$/;
-  const uncheckedMatch = text.match(uncheckedRegex);
-  if (uncheckedMatch) {
-    return [{
-      text: `☐ ${uncheckedMatch[1]}`,
-      style: { checkedBox: false }
-    }];
-  }
-
-  // 匹配已勾選的項目 (包含 * [x] 或 - [x] 或純 [x])
-  const checkedRegex = /^(?:[*-]\s*)?\[x\]\s*(.*)$/i;
-  const checkedMatch = text.match(checkedRegex);
-  if (checkedMatch) {
-    return [{
-      text: `☑︎ ${checkedMatch[1]}`,
-      style: { checkedBox: true }
-    }];
-  }
-
-  return null;
-}
 
   static parseInline(text: string) {
     const segments: TextSegment[] = [];
@@ -79,11 +61,6 @@ static parseCheckbox(text: string): TextSegment[] | null {
     let inHighlight = false
     let inStrikethrough = false
     let i = 0
-    const checkboxSegments = this.parseCheckbox(text);
-    if (checkboxSegments) {
-      return checkboxSegments;
-    }
-  
     
     while (i < text.length) {
 
@@ -172,10 +149,12 @@ static parseCheckbox(text: string): TextSegment[] | null {
     return segments;
   }
 
+
+  
   static cleanMarkdown(text: string): string {
     return text.replace(/[`*]/g, '').trim();
   }
-
+  
   static parseBlock(markdown: string) {
     const blocks: StyledBlock[] = [];
     const lines = markdown.split('\n')
@@ -196,27 +175,41 @@ static parseCheckbox(text: string): TextSegment[] | null {
         continue
       }
 
-      // 列表項
-      const listMatch = line.match(/^[-*]\s+(.+)/)
-      if (listMatch) {
-        const segments = this.parseInline(listMatch[1]);
+      // 列表項處理
+      const uncheckedRegex = /^(?:[*-]\s*)?\[\s\]\s*(.*)$/
+      const checkedRegex = /^(?:[*-]\s*)?\[x\]\s*(.*)$/i
+      const listRegex = /^[-*]\s+(.+)/
+      
+      const uncheckedMatch = line.match(uncheckedRegex)
+      const checkedMatch = line.match(checkedRegex)
+      const listMatch = line.match(listRegex)
+
+      // 統一處理所有列表類型
+      if (uncheckedMatch || checkedMatch || listMatch) {
+        const match = checkedMatch || uncheckedMatch || listMatch
+        if (!match) continue;
+        const content = match[1]
+        const segments = this.parseInline(content)
+        
+        const listItem = {
+          content: this.cleanMarkdown(content),
+          checkable: Boolean(checkedMatch || uncheckedMatch),
+          checked: Boolean(checkedMatch),
+          segments
+        }
+
         if (currentBlock?.type !== 'list') {
           if (currentBlock) blocks.push(currentBlock)
           currentBlock = {
             type: 'list',
-            content: this.cleanMarkdown(listMatch[1]), 
-            segments: segments
+            content: '',
+            items: [listItem]
           }
         } else {
-           // 如果已經是列表項，附加新的 segments
-          currentBlock.segments = [
-            ...(currentBlock.segments || []),
-            ...segments
-          ];
+          currentBlock.items?.push(listItem)
         }
         continue
       }
-
       // 程式碼區塊
       // 這裡簡化處理，只考慮單行程式碼
       const codeMatch = line.match(/^```(.+)/)
@@ -264,7 +257,6 @@ static parseCheckbox(text: string): TextSegment[] | null {
         highlight?: boolean; 
         italic?: Boolean; 
         strikethrough?: Boolean;
-        checkedBox?: Boolean; 
       }) => {
     return {
       fontWeight: style?.bold ? 'bold' : 'normal' as 'bold' | 'normal',
@@ -286,15 +278,24 @@ static parseCheckbox(text: string): TextSegment[] | null {
           width={CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2}
           spacing={8}
         >
-        {block.segments?.map((segment, segIndex) => (
-          <Text 
-            key={segIndex}
-            {...MarkdownParser.getTextStyle(segment.style)}
-          >
-            <Span>・</Span>
-            {segment.text}
-          </Text>
-        ))}
+          {block.items?.map((item, itemIndex) => (
+            <AutoLayout 
+              key={itemIndex}
+              direction="horizontal" 
+              spacing={3} 
+              verticalAlignItems="center" 
+              width="fill-parent"
+            >
+               {item.checkable ?  <SVG src={item.checked ? CheckIcon : UnCheckIcon} /> : <SVG src={Dot} />}
+              <Text width="fill-parent">
+                {item.segments?.map((segment, segIndex) => (
+                  <Span key={segIndex} {...MarkdownParser.getTextStyle(segment.style)}>
+                    {segment.text}
+                  </Span>
+                ))}
+              </Text>
+            </AutoLayout>
+          ))}
         </AutoLayout>
       )
     }
