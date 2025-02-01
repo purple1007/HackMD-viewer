@@ -2,10 +2,6 @@ import { MarkdownParser, CONTAINER_SIZE} from './MarkdownParser'
 const { widget } = figma
 const { AutoLayout,Span, Text, Input, useSyncedState, usePropertyMenu } = widget
 
-const refreshIcon = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.65 2.35a8 8 0 1 0 1.4 1.4L13.65 2.35z" fill="currentColor"/></svg>`
-const keyIcon = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.33a4.67 4.67 0 0 1 4.67 4.67A4.67 4.67 0 0 1 8 10.67 4.67 4.67 0 0 1 3.33 6 4.67 4.67 0 0 1 8 1.33z" fill="currentColor"/></svg>`
-
-
 function HackMDViewer() {
   const [url, setUrl] = useSyncedState('url', '')
   const [content, setContent] = useSyncedState('content', '')
@@ -24,6 +20,7 @@ function HackMDViewer() {
     return match[1]
   }
 
+  
   const fetchContent = async () => {
     if (!url) {
       setError('請輸入 HackMD 連結')
@@ -35,29 +32,6 @@ function HackMDViewer() {
       setError('')
       
       const noteId = getHackMDId(url)
-      
-      if (apiKey) {
-        try {
-          const response = await fetch(`https://api.hackmd.io/v1/notes/${noteId}?t=${new Date().getTime()}`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'Content-Type': 'application/json'
-            }
-          })
-          
-          if (!response.ok) {
-            throw new Error(`API 錯誤: ${response.status}`)
-          }
-          
-          const data = await response.json()
-          setContent(data.content)
-          return
-        } catch (err) {
-          console.error('API request failed:', err)
-        }
-      }
-      
       const publicResponse = await fetch(`https://hackmd.io/${noteId}/download?t=${new Date().getTime()}`)
       
       if (!publicResponse.ok) {
@@ -73,36 +47,50 @@ function HackMDViewer() {
       setLoading(false)
     }
   }
-
+  
+  const fetchApiKey = async () => { 
+    if (apiKey) {
+      try {
+        const response = await fetch(`https://api.hackmd.io/v1`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        if (!response.ok) {
+          throw new Error(`API 錯誤: ${response.status}`)
+        }
+        
+        const data = await response.json()
+        setContent(data.content)
+        return
+      } catch (err) {
+        console.error('API request failed:', err)
+      }
+    }
+  }
   usePropertyMenu(
     [
       {
         itemType: 'action',
         propertyName: 'refresh',
-        tooltip: '重新整理',
-        icon: refreshIcon
-      },
-      {
-        itemType: 'separator'
-      },
-      {
-        itemType: 'action',
-        propertyName: 'setApiKey',
-        tooltip: '設定 API Key',
-        icon: keyIcon
+        tooltip: '重新整理'
       }
+      // {
+      //   itemType: 'separator'
+      // },
+      // {
+      //   itemType: 'action',
+      //   propertyName: 'setApiKey',
+      //   tooltip: '設定 API Key'
+      // }
     ],
     async ({ propertyName }) => {
       if (propertyName === 'refresh') {
         await fetchContent()
       } else if (propertyName === 'setApiKey') {
-        figma.showUI(__html__, { width: 320, height: 160 })
-        figma.ui.onmessage = (message) => {
-          if (message.type === 'setApiKey' && message.apiKey) {
-            setApiKey(message.apiKey)
-            figma.closePlugin()
-          }
-        }
+        await fetchApiKey()
       }
     }
   )
@@ -142,7 +130,7 @@ function HackMDViewer() {
       direction="vertical"
       padding={CONTAINER_SIZE.PADDING}
       width={CONTAINER_SIZE.WIDTH}
-      fill="#FFFFFF"
+      fill="#F5F5F5"
       cornerRadius={8}
       effect={{
         type: 'drop-shadow',
@@ -152,7 +140,12 @@ function HackMDViewer() {
       }}
       spacing={8}
     >
-      <AutoLayout width="fill-parent">
+      <AutoLayout 
+        width="fill-parent"
+        fill="#eee"
+        padding={10}
+        cornerRadius={4}
+      >
         <Input
           value={url}
           placeholder="輸入 HackMD 連結..."
@@ -163,14 +156,19 @@ function HackMDViewer() {
           width="fill-parent"
         />
       </AutoLayout>
-      
+      {/* API 輸入框 */}
+      {/* <AutoLayout width="fill-parent">
+        <Input
+          value={apiKey}
+          placeholder="輸入 API..."
+          onTextEditEnd={(e) => {
+            setApiKey(e.characters)
+          }}
+          width="fill-parent"
+        />
+      </AutoLayout> */}
       {renderContent()}
       
-      {!apiKey && (
-        <AutoLayout>
-          <Text fill="#FF6B00">提示：設定 API Key 可以存取私人文件</Text>
-        </AutoLayout>
-      )}
     </AutoLayout>
   )
 }
