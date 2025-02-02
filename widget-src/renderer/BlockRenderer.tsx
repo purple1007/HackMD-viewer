@@ -1,5 +1,5 @@
-const { widget } = figma;
-const { AutoLayout, Span, Text } = widget;
+const { widget } = figma
+const { AutoLayout, Span, Text } = widget
 
 import { StyledBlock } from '../types/block';
 import { getTextStyle } from '../utils/styles';

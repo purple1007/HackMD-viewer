@@ -1,4 +1,20 @@
 (() => {
+  var __defProp = Object.defineProperty;
+  var __getOwnPropSymbols = Object.getOwnPropertySymbols;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __propIsEnum = Object.prototype.propertyIsEnumerable;
+  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+  var __spreadValues = (a, b) => {
+    for (var prop in b || (b = {}))
+      if (__hasOwnProp.call(b, prop))
+        __defNormalProp(a, prop, b[prop]);
+    if (__getOwnPropSymbols)
+      for (var prop of __getOwnPropSymbols(b)) {
+        if (__propIsEnum.call(b, prop))
+          __defNormalProp(a, prop, b[prop]);
+      }
+    return a;
+  };
   var __async = (__this, __arguments, generator) => {
     return new Promise((resolve, reject) => {
       var fulfilled = (value) => {
@@ -20,9 +36,154 @@
     });
   };
 
-  // widget-src/MarkdownParser.tsx
-  var { widget } = figma;
-  var { Span, Text } = widget;
+  // widget-src/parser/InlineParser.tsx
+  var InlineParser = class {
+    static cleanMarkdown(text) {
+      return text.replace(/[`*]/g, "").trim();
+    }
+    static parseInline(text) {
+      const segments = [];
+      let currentText = "";
+      let inBold = false;
+      let inItalic = false;
+      let inCode = false;
+      let inHighlight = false;
+      let inStrikethrough = false;
+      let i = 0;
+      while (i < text.length) {
+        if (text[i] === "`" && !inBold && !inItalic) {
+          if (currentText) {
+            segments.push({
+              text: currentText,
+              style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough }
+            });
+            currentText = "";
+          }
+          inCode = !inCode;
+          i++;
+          continue;
+        }
+        if (text.startsWith("==", i)) {
+          if (currentText) {
+            segments.push({
+              text: currentText,
+              style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough }
+            });
+            currentText = "";
+          }
+          inHighlight = !inHighlight;
+          i += 2;
+          continue;
+        }
+        if (text.startsWith("**", i) && !inCode) {
+          if (currentText) {
+            segments.push({
+              text: currentText,
+              style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough }
+            });
+            currentText = "";
+          }
+          inBold = !inBold;
+          i += 2;
+          continue;
+        }
+        if (text.startsWith("~~", i) && !inCode) {
+          if (currentText) {
+            segments.push({
+              text: currentText,
+              style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough }
+            });
+            currentText = "";
+          }
+          inStrikethrough = !inStrikethrough;
+          i += 2;
+          continue;
+        }
+        if (text[i] === "*" && !text.startsWith("**", i) && !inCode) {
+          if (currentText) {
+            segments.push({
+              text: currentText,
+              style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough }
+            });
+            currentText = "";
+          }
+          inItalic = !inItalic;
+          i++;
+          continue;
+        }
+        currentText += text[i];
+        i++;
+      }
+      if (currentText) {
+        segments.push({
+          text: InlineParser.cleanMarkdown(currentText),
+          style: { bold: inBold, italic: inItalic, code: inCode, highlight: inHighlight, strikethrough: inStrikethrough }
+        });
+      }
+      return segments;
+    }
+  };
+
+  // widget-src/parser/BlockParser.tsx
+  var BlockParser = class {
+    static parseBlock(markdown) {
+      var _a, _b;
+      const blocks = [];
+      const lines = markdown.split("\n");
+      let currentBlock = null;
+      for (const line of lines) {
+        const headingMatch = line.match(/^(#{1,6})\s+(.+)/);
+        if (headingMatch) {
+          if (currentBlock)
+            blocks.push(currentBlock);
+          currentBlock = {
+            type: "heading",
+            content: InlineParser.cleanMarkdown(headingMatch[2]),
+            level: headingMatch[1].length
+          };
+          continue;
+        }
+        const listMatch = line.match(/^[-*]\s+(.+)/);
+        if (listMatch) {
+          const segments = InlineParser.parseInline(listMatch[1]);
+          if (!currentBlock || currentBlock.type !== "list") {
+            if (currentBlock)
+              blocks.push(currentBlock);
+            currentBlock = {
+              type: "list",
+              content: "",
+              items: [{ content: listMatch[1], segments }]
+            };
+          } else {
+            (_a = currentBlock.items) == null ? void 0 : _a.push({ content: listMatch[1], segments });
+          }
+          continue;
+        }
+        if (line.trim()) {
+          const segments = InlineParser.parseInline(line);
+          if (!currentBlock || currentBlock.type !== "paragraph") {
+            if (currentBlock)
+              blocks.push(currentBlock);
+            currentBlock = {
+              type: "paragraph",
+              content: InlineParser.cleanMarkdown(line),
+              segments
+            };
+          } else {
+            (_b = currentBlock.segments) == null ? void 0 : _b.push(...segments);
+            currentBlock.content += " " + InlineParser.cleanMarkdown(line);
+          }
+          continue;
+        }
+      }
+      if (currentBlock) {
+        blocks.push(currentBlock);
+      }
+      return blocks;
+    }
+  };
+
+  // widget-src/constants/markdown.tsx
   var MARKDOWN_CONSTANTS = {
     HEADING_SIZES: {
       1: 32,
@@ -38,174 +199,85 @@
     WIDTH: 600,
     PADDING: 16
   };
-  var MarkdownParser = class {
-    static parseInline(text) {
-      const segments = [];
-      let currentText = "";
-      let inBold = false;
-      let inItalic = false;
-      let inCode = false;
-      let inHighlight = false;
-      let i = 0;
-      while (i < text.length) {
-        if (text[i] === "`" && !inBold && !inItalic) {
-          if (currentText) {
-            segments.push({
-              text: currentText.replace(/[`*]/g, ""),
-              style: { bold: inBold, italic: inItalic, highlight: inHighlight }
-            });
-            currentText = "";
-          }
-          inCode = !inCode;
-          i++;
-          continue;
-        }
-        if (text.startsWith("==", i)) {
-          if (currentText) {
-            segments.push({
-              text: currentText.replace(/==/g, ""),
-              style: { bold: inBold, italic: inItalic, code: inCode, highlight: inHighlight }
-            });
-            currentText = "";
-          }
-          inHighlight = !inHighlight;
-          i += 2;
-          continue;
-        }
-        if (text.startsWith("**", i) && !inCode) {
-          if (currentText) {
-            segments.push({
-              text: currentText.replace(/[`*]/g, ""),
-              style: { bold: inBold, italic: inItalic, highlight: inHighlight }
-            });
-            currentText = "";
-          }
-          inBold = !inBold;
-          i += 2;
-          continue;
-        }
-        if (text[i] === "*" && !text.startsWith("**", i) && !inCode) {
-          if (currentText) {
-            segments.push({
-              text: currentText.replace(/[`*]/g, ""),
-              style: { bold: inBold, italic: inItalic, highlight: inHighlight }
-            });
-            currentText = "";
-          }
-          inItalic = !inItalic;
-          i++;
-          continue;
-        }
-        currentText += text[i];
-        i++;
-      }
-      if (currentText) {
-        segments.push({
-          text: currentText.replace(/==/g, "").replace(/[`*]/g, ""),
-          style: { bold: inBold, italic: inItalic, code: inCode, highlight: inHighlight }
-        });
-      }
-      return segments;
-    }
-    static cleanMarkdown(text) {
-      return text.replace(/[`*]/g, "").trim();
-    }
-    static parseBlock(markdown) {
-      const blocks = [];
-      const lines = markdown.split("\n");
-      let currentBlock = null;
-      for (const line of lines) {
-        const headingMatch = line.match(/^(#{1,6})\s+(.+)/);
-        if (headingMatch) {
-          if (currentBlock)
-            blocks.push(currentBlock);
-          currentBlock = {
-            type: "heading",
-            content: this.cleanMarkdown(headingMatch[2]),
-            level: headingMatch[1].length
-          };
-          continue;
-        }
-        const listMatch = line.match(/^[-*]\s+(.+)/);
-        if (listMatch) {
-          if ((currentBlock == null ? void 0 : currentBlock.type) !== "list") {
-            if (currentBlock)
-              blocks.push(currentBlock);
-            currentBlock = {
-              type: "list",
-              content: this.cleanMarkdown(listMatch[1])
-            };
-          } else {
-            currentBlock.content += "\n" + listMatch[1];
-          }
-          continue;
-        }
-        const codeMatch = line.match(/^```(.+)/);
-        if (codeMatch) {
-          if (currentBlock)
-            blocks.push(currentBlock);
-          currentBlock = {
-            type: "code",
-            content: codeMatch[1]
-          };
-          continue;
-        }
-        if (line.trim()) {
-          const segments = this.parseInline(line);
-          if ((currentBlock == null ? void 0 : currentBlock.type) !== "paragraph") {
-            if (currentBlock)
-              blocks.push(currentBlock);
-            currentBlock = {
-              type: "paragraph",
-              content: this.cleanMarkdown(line),
-              segments
-            };
-          } else {
-            currentBlock.segments = [
-              ...currentBlock.segments || [],
-              ...segments
-            ];
-            currentBlock.content += " " + this.cleanMarkdown(line);
-          }
-          continue;
-        }
-      }
-      if (currentBlock) {
-        blocks.push(currentBlock);
-      }
-      return blocks;
-    }
+
+  // widget-src/utils/styles.ts
+  var getTextStyle = (style) => {
+    return {
+      fontWeight: (style == null ? void 0 : style.bold) ? "bold" : "normal",
+      fill: (style == null ? void 0 : style.href) ? "#0066CC" : (style == null ? void 0 : style.highlight) ? "#DFA424" : "#232323",
+      italic: (style == null ? void 0 : style.italic) ? true : false,
+      textDecoration: (style == null ? void 0 : style.href) ? "underline" : (style == null ? void 0 : style.strikethrough) ? "strikethrough" : "none",
+      fontSize: MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE
+    };
+  };
+
+  // widget-src/renderer/BlockRenderer.tsx
+  var { widget } = figma;
+  var { AutoLayout, Span, Text } = widget;
+  var BlockRenderer = class {
     static renderBlock(block, index) {
+      if (block.type === "list") {
+        return this.renderList(block, index);
+      }
+      return this.renderText(block, index);
+    }
+    static renderList(block, index) {
+      var _a;
+      return /* @__PURE__ */ figma.widget.h(AutoLayout, {
+        key: index,
+        direction: "vertical",
+        spacing: 12,
+        padding: { top: 12, bottom: 12 }
+      }, (_a = block.items) == null ? void 0 : _a.map((item, itemIndex) => {
+        var _a2;
+        return /* @__PURE__ */ figma.widget.h(AutoLayout, {
+          key: itemIndex,
+          direction: "horizontal",
+          spacing: 3,
+          verticalAlignItems: "center",
+          width: "fill-parent",
+          padding: { left: 6 }
+        }, /* @__PURE__ */ figma.widget.h(Text, {
+          fill: "#232323",
+          width: 18
+        }, item.ordered ? `${itemIndex + 1}.` : ""), /* @__PURE__ */ figma.widget.h(Text, {
+          width: "fill-parent"
+        }, (_a2 = item.segments) == null ? void 0 : _a2.map((segment, segIndex) => /* @__PURE__ */ figma.widget.h(Span, __spreadValues({
+          key: segIndex
+        }, getTextStyle(segment.style)), segment.text))));
+      }));
+    }
+    static renderText(block, index) {
+      var _a;
       return /* @__PURE__ */ figma.widget.h(Text, {
         key: index,
-        width: CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2,
-        fontSize: block.type === "heading" ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level] : MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE,
-        fontWeight: block.type === "heading" ? "extra-bold" : "normal",
-        horizontalAlignText: "left",
-        lineHeight: block.type === "heading" ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level] * 1.6 : 28
-      }, block.segments ? block.segments.map((segment, segIndex) => {
-        var _a, _b, _c;
-        return /* @__PURE__ */ figma.widget.h(Span, {
-          key: `${index}-${segIndex}`,
-          fontWeight: ((_a = segment.style) == null ? void 0 : _a.bold) ? "bold" : "normal",
-          fill: ((_b = segment.style) == null ? void 0 : _b.highlight) ? "#FF0000" : "#000000",
-          fontSize: ((_c = segment.style) == null ? void 0 : _c.highlight) ? 40 : 16
-        }, segment.text);
-      }) : block.content);
+        fill: "#232323",
+        fontSize: block.level ? 24 - block.level * 2 : 16,
+        fontWeight: block.type === "heading" ? "bold" : "normal"
+      }, (_a = block.segments) == null ? void 0 : _a.map((segment, segIndex) => /* @__PURE__ */ figma.widget.h(Span, __spreadValues({
+        key: `${index}-${segIndex}`
+      }, getTextStyle(segment.style)), segment.text)));
+    }
+  };
+
+  // widget-src/MarkdownParser.tsx
+  var MarkdownParser = class {
+    static parseBlock(markdown) {
+      return BlockParser.parseBlock(markdown);
+    }
+    static renderBlock(block, index) {
+      return BlockRenderer.renderBlock(block, index);
     }
   };
 
   // widget-src/code.tsx
   var { widget: widget2 } = figma;
-  var { AutoLayout, Span: Span2, Text: Text2, Input, useSyncedState, usePropertyMenu } = widget2;
-  var refreshIcon = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.65 2.35a8 8 0 1 0 1.4 1.4L13.65 2.35z" fill="currentColor"/></svg>`;
-  var keyIcon = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.33a4.67 4.67 0 0 1 4.67 4.67A4.67 4.67 0 0 1 8 10.67 4.67 4.67 0 0 1 3.33 6 4.67 4.67 0 0 1 8 1.33z" fill="currentColor"/></svg>`;
+  var { AutoLayout: AutoLayout2, Input, Text: Text2, useSyncedState, usePropertyMenu } = widget2;
   function HackMDViewer() {
     const [url, setUrl] = useSyncedState("url", "");
     const [content, setContent] = useSyncedState("content", "");
     const [loading, setLoading] = useSyncedState("loading", false);
     const [error, setError] = useSyncedState("error", "");
-    const [apiKey, setApiKey] = useSyncedState("apiKey", "");
     const getHackMDId = (urlString) => {
       const urlPattern = /hackmd\.io\/(?:@[^/]+\/)?([^/]+)/;
       const match = urlString.match(urlPattern);
@@ -223,25 +295,6 @@
         setLoading(true);
         setError("");
         const noteId = getHackMDId(url);
-        if (apiKey) {
-          try {
-            const response = yield fetch(`https://api.hackmd.io/v1/notes/${noteId}?t=${new Date().getTime()}`, {
-              method: "GET",
-              headers: {
-                "Authorization": `Bearer ${apiKey}`,
-                "Content-Type": "application/json"
-              }
-            });
-            if (!response.ok) {
-              throw new Error(`API \u932F\u8AA4: ${response.status}`);
-            }
-            const data = yield response.json();
-            setContent(data.content);
-            return;
-          } catch (err) {
-            console.error("API request failed:", err);
-          }
-        }
         const publicResponse = yield fetch(`https://hackmd.io/${noteId}/download?t=${new Date().getTime()}`);
         if (!publicResponse.ok) {
           throw new Error("\u7121\u6CD5\u8F09\u5165\u6587\u4EF6");
@@ -259,55 +312,36 @@
       {
         itemType: "action",
         propertyName: "refresh",
-        tooltip: "\u91CD\u65B0\u6574\u7406",
-        icon: refreshIcon
-      },
-      {
-        itemType: "separator"
-      },
-      {
-        itemType: "action",
-        propertyName: "setApiKey",
-        tooltip: "\u8A2D\u5B9A API Key",
-        icon: keyIcon
+        tooltip: "\u91CD\u65B0\u6574\u7406"
       }
     ], (_0) => __async(this, [_0], function* ({ propertyName }) {
       if (propertyName === "refresh") {
         yield fetchContent();
-      } else if (propertyName === "setApiKey") {
-        figma.showUI(__html__, { width: 320, height: 160 });
-        figma.ui.onmessage = (message) => {
-          if (message.type === "setApiKey" && message.apiKey) {
-            setApiKey(message.apiKey);
-            figma.closePlugin();
-          }
-        };
       }
     }));
     const renderContent = () => {
       if (loading) {
-        return /* @__PURE__ */ figma.widget.h(AutoLayout, null, /* @__PURE__ */ figma.widget.h(Text2, null, "\u8F09\u5165\u4E2D..."));
+        return /* @__PURE__ */ figma.widget.h(AutoLayout2, null, /* @__PURE__ */ figma.widget.h(Text2, null, "\u8F09\u5165\u4E2D..."));
       }
       if (error) {
-        return /* @__PURE__ */ figma.widget.h(AutoLayout, null, /* @__PURE__ */ figma.widget.h(Text2, {
+        return /* @__PURE__ */ figma.widget.h(AutoLayout2, null, /* @__PURE__ */ figma.widget.h(Text2, {
           fill: "#FF0000"
         }, error));
       }
       if (content) {
         const blocks = MarkdownParser.parseBlock(content);
         console.log("Parsed blocks:", blocks);
-        return /* @__PURE__ */ figma.widget.h(AutoLayout, {
-          direction: "vertical",
-          fill: "#ffffff"
+        return /* @__PURE__ */ figma.widget.h(AutoLayout2, {
+          direction: "vertical"
         }, blocks.map((block, index) => MarkdownParser.renderBlock(block, index)));
       }
       return null;
     };
-    return /* @__PURE__ */ figma.widget.h(AutoLayout, {
+    return /* @__PURE__ */ figma.widget.h(AutoLayout2, {
       direction: "vertical",
       padding: CONTAINER_SIZE.PADDING,
       width: CONTAINER_SIZE.WIDTH,
-      fill: "#FFFFFF",
+      fill: "#F5F5F5",
       cornerRadius: 8,
       effect: {
         type: "drop-shadow",
@@ -316,8 +350,11 @@
         blur: 4
       },
       spacing: 8
-    }, /* @__PURE__ */ figma.widget.h(AutoLayout, {
-      width: "fill-parent"
+    }, /* @__PURE__ */ figma.widget.h(AutoLayout2, {
+      width: "fill-parent",
+      fill: "#eee",
+      padding: 10,
+      cornerRadius: 4
     }, /* @__PURE__ */ figma.widget.h(Input, {
       value: url,
       placeholder: "\u8F38\u5165 HackMD \u9023\u7D50...",
@@ -326,9 +363,7 @@
         fetchContent();
       },
       width: "fill-parent"
-    })), renderContent(), !apiKey && /* @__PURE__ */ figma.widget.h(AutoLayout, null, /* @__PURE__ */ figma.widget.h(Text2, {
-      fill: "#FF6B00"
-    }, "\u63D0\u793A\uFF1A\u8A2D\u5B9A API Key \u53EF\u4EE5\u5B58\u53D6\u79C1\u4EBA\u6587\u4EF6")));
+    })), renderContent());
   }
   widget2.register(HackMDViewer);
 })();

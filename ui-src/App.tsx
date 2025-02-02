@@ -7,17 +7,9 @@ function App() {
       parent?.postMessage?.({ pluginMessage: "hello" }, "*");
     }
   }, []);
-
   return (
     <div className="App">
-      <h1>Hello</h1>
-      <button
-        onClick={() => {
-          parent?.postMessage?.({ pluginMessage: "close" }, "*");
-        }}
-      >
-        Close
-      </button>
+      <h1>Test</h1>
     </div>
   );
 }

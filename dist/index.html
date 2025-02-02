@@ -2,42 +2,12 @@
 
   <body>
     <style>
-      body {
-        font: 12px sans-serif;
-        margin: 20px;
-      }
-      input {
-        width: 100%;
-        padding: 8px;
-        margin: 8px 0;
-        box-sizing: border-box;
-      }
-      button {
-        background: #18A0FB;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 6px;
-        cursor: pointer;
-      }
-      button:hover {
-        background: #1089D9;
-      }
+      
     </style>
 
     <div>
       <h3>設定 API Key</h3>
-      <input type="password" id="apiKeyInput" placeholder="請輸入 API Key">
-      <button onclick="setApiKey()">確認</button>
     </div>
-
-    <script>
-      function setApiKey() {
-        const apiKey = document.getElementById('apiKeyInput').value
-        if (apiKey) {
-          parent.postMessage({ pluginMessage: { type: 'setApiKey', apiKey } }, '*')
-        }
-      }
-    </script>
+    
   </body>
 </html>

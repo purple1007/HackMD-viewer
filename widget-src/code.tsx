@@ -1,13 +1,14 @@
-import { MarkdownParser, CONTAINER_SIZE} from './MarkdownParser'
 const { widget } = figma
-const { AutoLayout,Span, Text, Input, useSyncedState, usePropertyMenu } = widget
+const { AutoLayout, Input, Text, useSyncedState, usePropertyMenu } = widget as any
+
+import { MarkdownParser } from './MarkdownParser'
+import { CONTAINER_SIZE } from './constants/markdown'
 
 function HackMDViewer() {
   const [url, setUrl] = useSyncedState('url', '')
   const [content, setContent] = useSyncedState('content', '')
   const [loading, setLoading] = useSyncedState('loading', false)
   const [error, setError] = useSyncedState('error', '')
-  const [apiKey, setApiKey] = useSyncedState('apiKey', '')
 
   const getHackMDId = (urlString: string): string => {
     const urlPattern = /hackmd\.io\/(?:@[^/]+\/)?([^/]+)/
@@ -20,7 +21,6 @@ function HackMDViewer() {
     return match[1]
   }
 
-  
   const fetchContent = async () => {
     if (!url) {
       setError('請輸入 HackMD 連結')
@@ -47,29 +47,7 @@ function HackMDViewer() {
       setLoading(false)
     }
   }
-  
-  const fetchApiKey = async () => { 
-    if (apiKey) {
-      try {
-        const response = await fetch(`https://api.hackmd.io/v1`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-          }
-        })
-        if (!response.ok) {
-          throw new Error(`API 錯誤: ${response.status}`)
-        }
-        
-        const data = await response.json()
-        setContent(data.content)
-        return
-      } catch (err) {
-        console.error('API request failed:', err)
-      }
-    }
-  }
+
   usePropertyMenu(
     [
       {
@@ -77,20 +55,10 @@ function HackMDViewer() {
         propertyName: 'refresh',
         tooltip: '重新整理'
       }
-      // {
-      //   itemType: 'separator'
-      // },
-      // {
-      //   itemType: 'action',
-      //   propertyName: 'setApiKey',
-      //   tooltip: '設定 API Key'
-      // }
     ],
-    async ({ propertyName }) => {
+    async ({ propertyName }: { propertyName: string }) => {
       if (propertyName === 'refresh') {
         await fetchContent()
-      } else if (propertyName === 'setApiKey') {
-        await fetchApiKey()
       }
     }
   )
@@ -111,21 +79,21 @@ function HackMDViewer() {
         </AutoLayout>
       )
     }
+
     if (content) {
       const blocks = MarkdownParser.parseBlock(content)
       console.log('Parsed blocks:', blocks)
       return (
-        // 內文渲染
-        <AutoLayout direction="vertical" fill="#ffffff">
-         {blocks.map((block, index) => MarkdownParser.renderBlock(block, index))}
+        <AutoLayout direction="vertical">
+          {blocks.map((block, index) => MarkdownParser.renderBlock(block, index))}
         </AutoLayout>
       )
     }
+
     return null
   }
 
   return (
-  
     <AutoLayout
       direction="vertical"
       padding={CONTAINER_SIZE.PADDING}
@@ -149,26 +117,14 @@ function HackMDViewer() {
         <Input
           value={url}
           placeholder="輸入 HackMD 連結..."
-          onTextEditEnd={(e) => {
+          onTextEditEnd={(e: { characters: string }) => {
             setUrl(e.characters)
             fetchContent()
           }}
           width="fill-parent"
         />
       </AutoLayout>
-      {/* API 輸入框 */}
-      {/* <AutoLayout width="fill-parent">
-        <Input
-          value={apiKey}
-          placeholder="輸入 API..."
-          onTextEditEnd={(e) => {
-            setApiKey(e.characters)
-          }}
-          width="fill-parent"
-        />
-      </AutoLayout> */}
       {renderContent()}
-      
     </AutoLayout>
   )
 }
