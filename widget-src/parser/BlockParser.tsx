@@ -20,6 +20,23 @@ export class BlockParser {
         };
         continue;
       }
+      // 圖片
+      const imageMatch = line.match(/^!\[(.*?)\]\((.*?)(?:\s*=\s*(\d+%?x?))?\)$/);
+      if (imageMatch) {
+        if (currentBlock) blocks.push(currentBlock);
+        let width = imageMatch[3] || 'fill-parent';
+        width = width.replace('x', ''); // 刪除寬度中的 'x'
+        let widthNumber: number | string = width.includes('%') ? parseFloat(width) : parseInt(width, 10);
+        currentBlock = {
+          type: 'image',
+          src: imageMatch[2], // 圖片 URL
+          alt: imageMatch[1], // 圖片替代文字
+          width: widthNumber || 'fill-parent', // 圖片寬度
+        };
+        blocks.push(currentBlock);
+        currentBlock = null;
+        continue;
+      }
 
      // 列表處理
      const orderedListRegex = /^(\d+)\.\s+(.+)/;

@@ -2,6 +2,13 @@
 
 import { TextSegment } from './text';
 
+export interface styledImage {
+  type: 'image';
+  src: string;
+  alt: string;
+  width: number | string;
+}
+
 export interface StyledBlock {
   segments?: TextSegment[];
   type: string;

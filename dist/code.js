@@ -197,6 +197,23 @@
           };
           continue;
         }
+        const imageMatch = line.match(/^!\[(.*?)\]\((.*?)(?:\s*=\s*(\d+%?x?))?\)$/);
+        if (imageMatch) {
+          if (currentBlock)
+            blocks.push(currentBlock);
+          let width = imageMatch[3] || "fill-parent";
+          width = width.replace("x", "");
+          let widthNumber = width.includes("%") ? parseFloat(width) : parseInt(width, 10);
+          currentBlock = {
+            type: "image",
+            src: imageMatch[2],
+            alt: imageMatch[1],
+            width: widthNumber || "fill-parent"
+          };
+          blocks.push(currentBlock);
+          currentBlock = null;
+          continue;
+        }
         const orderedListRegex = /^(\d+)\.\s+(.+)/;
         const uncheckedRegex = /^(?:[*-]\s*)?\[\s\]\s*(.*)$/;
         const checkedRegex = /^(?:[*-]\s*)?\[x\]\s*(.*)$/i;
@@ -387,6 +404,24 @@
     }
   };
 
+  // widget-src/renderer/ImageRenderer.tsx
+  var { widget: widget3 } = figma;
+  var { AutoLayout: AutoLayout3, Image, Text: Text3, Span: Span3, SVG: SVG2 } = widget3;
+  var ImageRenderer = class {
+    static renderImage(block, index) {
+      return /* @__PURE__ */ figma.widget.h(Image, {
+        key: index,
+        src: block.src,
+        width: "fill-parent",
+        height: 300,
+        cornerRadius: 6,
+        onError: () => {
+          console.error("Unable to load image:", block.src);
+        }
+      });
+    }
+  };
+
   // widget-src/MarkdownParser.tsx
   var MarkdownParser = class {
     static parseBlock(markdown) {
@@ -396,13 +431,16 @@
       if (block.type === "list") {
         return ListRenderer.renderList(block, index);
       }
+      if (block.type === "image") {
+        return ImageRenderer.renderImage(block, index);
+      }
       return BlockRenderer.renderBlock(block, index);
     }
   };
 
   // widget-src/code.tsx
-  var { widget: widget3 } = figma;
-  var { AutoLayout: AutoLayout3, Input, Text: Text3, useSyncedState, usePropertyMenu } = widget3;
+  var { widget: widget4 } = figma;
+  var { AutoLayout: AutoLayout4, Input, Text: Text4, useSyncedState, usePropertyMenu } = widget4;
   function HackMDViewer() {
     const [url, setUrl] = useSyncedState("url", "");
     const [content, setContent] = useSyncedState("content", "");
@@ -451,23 +489,23 @@
     }));
     const renderContent = () => {
       if (loading) {
-        return /* @__PURE__ */ figma.widget.h(AutoLayout3, null, /* @__PURE__ */ figma.widget.h(Text3, null, "\u8F09\u5165\u4E2D..."));
+        return /* @__PURE__ */ figma.widget.h(AutoLayout4, null, /* @__PURE__ */ figma.widget.h(Text4, null, "\u8F09\u5165\u4E2D..."));
       }
       if (error) {
-        return /* @__PURE__ */ figma.widget.h(AutoLayout3, null, /* @__PURE__ */ figma.widget.h(Text3, {
+        return /* @__PURE__ */ figma.widget.h(AutoLayout4, null, /* @__PURE__ */ figma.widget.h(Text4, {
           fill: "#FF0000"
         }, error));
       }
       if (content) {
         const blocks = MarkdownParser.parseBlock(content);
         console.log("Parsed blocks:", blocks);
-        return /* @__PURE__ */ figma.widget.h(AutoLayout3, {
+        return /* @__PURE__ */ figma.widget.h(AutoLayout4, {
           direction: "vertical"
         }, blocks.map((block, index) => MarkdownParser.renderBlock(block, index)));
       }
       return null;
     };
-    return /* @__PURE__ */ figma.widget.h(AutoLayout3, {
+    return /* @__PURE__ */ figma.widget.h(AutoLayout4, {
       direction: "vertical",
       padding: CONTAINER_SIZE.PADDING,
       width: CONTAINER_SIZE.WIDTH,
@@ -480,7 +518,7 @@
         blur: 4
       },
       spacing: 8
-    }, /* @__PURE__ */ figma.widget.h(AutoLayout3, {
+    }, /* @__PURE__ */ figma.widget.h(AutoLayout4, {
       width: "fill-parent",
       fill: "#eee",
       padding: 10,
@@ -495,5 +533,5 @@
       width: "fill-parent"
     })), renderContent());
   }
-  widget3.register(HackMDViewer);
+  widget4.register(HackMDViewer);
 })();
