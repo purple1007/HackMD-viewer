@@ -21,22 +21,45 @@ export class BlockParser {
         continue;
       }
 
-      // 列表項處理
-      const listMatch = line.match(/^[-*]\s+(.+)/);
-      if (listMatch) {
-        const segments = InlineParser.parseInline(listMatch[1]);
-        if (!currentBlock || currentBlock.type !== 'list') {
-          if (currentBlock) blocks.push(currentBlock);
-          currentBlock = {
-            type: 'list',
-            content: '',
-            items: [{ content: listMatch[1], segments }],
-          };
-        } else {
-          currentBlock.items?.push({ content: listMatch[1], segments });
-        }
-        continue;
-      }
+     // 列表處理
+     const orderedListRegex = /^(\d+)\.\s+(.+)/;
+     const uncheckedRegex = /^(?:[*-]\s*)?\[\s\]\s*(.*)$/;
+     const checkedRegex = /^(?:[*-]\s*)?\[x\]\s*(.*)$/i;
+     const listRegex = /^[-*]\s+(.+)/;
+
+     const orderedListMatch = line.match(orderedListRegex);
+     const uncheckedMatch = line.match(uncheckedRegex);
+     const checkedMatch = line.match(checkedRegex);
+     const listMatch = line.match(listRegex);
+
+     if (uncheckedMatch || checkedMatch || listMatch || orderedListMatch) {
+       const match = orderedListMatch || checkedMatch || uncheckedMatch || listMatch;
+       if (!match) continue;
+
+       const content = orderedListMatch ? match[2] : match[1];
+       const segments = InlineParser.parseInline(content);
+
+       const listItem = {
+         content: InlineParser.cleanMarkdown(content),
+         segments,
+         checkable: Boolean(checkedMatch || uncheckedMatch),
+         checked: Boolean(checkedMatch),
+         ordered: Boolean(orderedListMatch),
+         number: orderedListMatch ? parseInt(match[1]) : undefined
+       };
+
+       if (!currentBlock || currentBlock.type !== 'list') {
+         if (currentBlock) blocks.push(currentBlock);
+         currentBlock = {
+           type: 'list',
+           content: '',
+           items: [listItem]
+         };
+       } else {
+         currentBlock.items?.push(listItem);
+       }
+       continue;
+     }
 
       // 段落
       if (line.trim()) {

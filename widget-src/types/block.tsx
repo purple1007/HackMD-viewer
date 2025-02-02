@@ -7,16 +7,20 @@ export interface StyledBlock {
   type: string;
   content: string;
   level?: number;
-  items?: {
-    content: string;
-    checked?: boolean;
-    segments: TextSegment[];
-    checkable?: boolean;
-    ordered?: boolean;
-  }[];
+  items?: ListItem[];
   style?: {
     bold?: boolean;
     italic?: boolean;
     code?: boolean;
   };
 }
+
+export interface ListItem {
+  content: string;
+  segments: any[];
+  checkable?: boolean;
+  checked?: boolean;
+  ordered?: boolean;
+  number?: number;
+}
+

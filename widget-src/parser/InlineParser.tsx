@@ -16,6 +16,7 @@ export class InlineParser {
     let i = 0;
 
     while (i < text.length) {
+      // code inline `文字`
       if (text[i] === '`' && !inBold && !inItalic) {
         if (currentText) {
           segments.push({
@@ -28,7 +29,7 @@ export class InlineParser {
         i++;
         continue;
       }
-
+      // highlight inline ==文字==
       if (text.startsWith('==', i)) {
         if (currentText) {
           segments.push({
@@ -42,6 +43,7 @@ export class InlineParser {
         continue;
       }
 
+      // bold inline **文字**
       if (text.startsWith('**', i) && !inCode) {
         if (currentText) {
           segments.push({
@@ -68,6 +70,7 @@ export class InlineParser {
         continue;
       }
 
+      // italic inline *文字*
       if (text[i] === '*' && !text.startsWith('**', i) && !inCode) {
         if (currentText) {
           segments.push({

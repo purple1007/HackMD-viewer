@@ -3,6 +3,7 @@ const { AutoLayout, Span, Text, SVG } = widget
 
 import { CheckIcon, UnCheckIcon, Dot } from '../components/icons';
 import { StyledBlock } from '../types/block';
+import { CONTAINER_SIZE } from '../constants/markdown';
 
 export class ListRenderer {
   static renderList(block: StyledBlock, index: number) {
@@ -10,6 +11,7 @@ export class ListRenderer {
       <AutoLayout
         key={index}
         direction="vertical"
+        width={CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2}
         spacing={12}
         padding={{ top: 12, bottom: 12 }}
       >

@@ -143,19 +143,38 @@
           };
           continue;
         }
-        const listMatch = line.match(/^[-*]\s+(.+)/);
-        if (listMatch) {
-          const segments = InlineParser.parseInline(listMatch[1]);
+        const orderedListRegex = /^(\d+)\.\s+(.+)/;
+        const uncheckedRegex = /^(?:[*-]\s*)?\[\s\]\s*(.*)$/;
+        const checkedRegex = /^(?:[*-]\s*)?\[x\]\s*(.*)$/i;
+        const listRegex = /^[-*]\s+(.+)/;
+        const orderedListMatch = line.match(orderedListRegex);
+        const uncheckedMatch = line.match(uncheckedRegex);
+        const checkedMatch = line.match(checkedRegex);
+        const listMatch = line.match(listRegex);
+        if (uncheckedMatch || checkedMatch || listMatch || orderedListMatch) {
+          const match = orderedListMatch || checkedMatch || uncheckedMatch || listMatch;
+          if (!match)
+            continue;
+          const content = orderedListMatch ? match[2] : match[1];
+          const segments = InlineParser.parseInline(content);
+          const listItem = {
+            content: InlineParser.cleanMarkdown(content),
+            segments,
+            checkable: Boolean(checkedMatch || uncheckedMatch),
+            checked: Boolean(checkedMatch),
+            ordered: Boolean(orderedListMatch),
+            number: orderedListMatch ? parseInt(match[1]) : void 0
+          };
           if (!currentBlock || currentBlock.type !== "list") {
             if (currentBlock)
               blocks.push(currentBlock);
             currentBlock = {
               type: "list",
               content: "",
-              items: [{ content: listMatch[1], segments }]
+              items: [listItem]
             };
           } else {
-            (_a = currentBlock.items) == null ? void 0 : _a.push({ content: listMatch[1], segments });
+            (_a = currentBlock.items) == null ? void 0 : _a.push(listItem);
           }
           continue;
         }
@@ -248,15 +267,76 @@
       }));
     }
     static renderText(block, index) {
-      var _a;
       return /* @__PURE__ */ figma.widget.h(Text, {
         key: index,
+        width: CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2,
         fill: "#232323",
-        fontSize: block.level ? 24 - block.level * 2 : 16,
-        fontWeight: block.type === "heading" ? "bold" : "normal"
-      }, (_a = block.segments) == null ? void 0 : _a.map((segment, segIndex) => /* @__PURE__ */ figma.widget.h(Span, __spreadValues({
+        fontSize: block.type === "heading" ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level] : MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE,
+        fontWeight: block.type === "heading" ? "extra-bold" : "normal",
+        lineHeight: block.type === "heading" ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level] * 1.6 : 28
+      }, block.segments ? block.segments.map((segment, segIndex) => /* @__PURE__ */ figma.widget.h(Span, __spreadValues({
         key: `${index}-${segIndex}`
-      }, getTextStyle(segment.style)), segment.text)));
+      }, getTextStyle(segment.style)), segment.text)) : block.content);
+    }
+  };
+
+  // widget-src/components/icons.tsx
+  var UnCheckIcon = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M3 5C3 3.89543 3.89543 3 5 3H17C18.1046 3 19 3.89543 19 5V17C19 18.1046 18.1046 19 17 19H5C3.89543 19 3 18.1046 3 17V5Z" fill="#564DFF"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M15.6553 7.84467C15.9482 8.13756 15.9482 8.61244 15.6553 8.90533L10.4053 14.1553C10.1124 14.4482 9.63756 14.4482 9.34467 14.1553L6.71967 11.5303C6.42678 11.2374 6.42678 10.7626 6.71967 10.4697C7.01256 10.1768 7.48744 10.1768 7.78033 10.4697L9.875 12.5643L14.5947 7.84467C14.8876 7.55178 15.3624 7.55178 15.6553 7.84467Z" fill="white"/>
+</svg>`;
+  var CheckIcon = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M5 3.5H17C17.8284 3.5 18.5 4.17157 18.5 5V17C18.5 17.8284 17.8284 18.5 17 18.5H5C4.17157 18.5 3.5 17.8284 3.5 17V5C3.5 4.17157 4.17157 3.5 5 3.5Z" fill="#FDFDFD"/>
+<path d="M5 3.5H17C17.8284 3.5 18.5 4.17157 18.5 5V17C18.5 17.8284 17.8284 18.5 17 18.5H5C4.17157 18.5 3.5 17.8284 3.5 17V5C3.5 4.17157 4.17157 3.5 5 3.5Z" stroke="#D4D4D8"/>
+</svg>
+`;
+  var Dot = `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="7" cy="7" r="3" fill="#232323"/>
+</svg>
+`;
+
+  // widget-src/renderer/ListRenderer.tsx
+  var { widget: widget2 } = figma;
+  var { AutoLayout: AutoLayout2, Span: Span2, Text: Text2, SVG } = widget2;
+  var ListRenderer = class {
+    static renderList(block, index) {
+      var _a;
+      return /* @__PURE__ */ figma.widget.h(AutoLayout2, {
+        key: index,
+        direction: "vertical",
+        width: CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2,
+        spacing: 12,
+        padding: { top: 12, bottom: 12 }
+      }, (_a = block.items) == null ? void 0 : _a.map((item, itemIndex) => {
+        var _a2;
+        return /* @__PURE__ */ figma.widget.h(AutoLayout2, {
+          key: itemIndex,
+          direction: "horizontal",
+          spacing: 3,
+          verticalAlignItems: "center",
+          width: "fill-parent",
+          padding: { left: 6 }
+        }, item.ordered ? /* @__PURE__ */ figma.widget.h(Text2, {
+          fill: "#232323",
+          width: 18
+        }, itemIndex + 1, ".") : item.checkable ? /* @__PURE__ */ figma.widget.h(SVG, {
+          src: item.checked ? CheckIcon : UnCheckIcon
+        }) : /* @__PURE__ */ figma.widget.h(SVG, {
+          src: Dot
+        }), /* @__PURE__ */ figma.widget.h(Text2, {
+          width: "fill-parent"
+        }, (_a2 = item.segments) == null ? void 0 : _a2.map((segment, segIndex) => /* @__PURE__ */ figma.widget.h(Span2, __spreadValues({
+          key: segIndex
+        }, this.getTextStyle(segment.style)), segment.text))));
+      }));
+    }
+    static getTextStyle(style) {
+      return {
+        fontWeight: (style == null ? void 0 : style.bold) ? "bold" : "normal",
+        fill: (style == null ? void 0 : style.href) ? "#0066CC" : "#232323",
+        italic: (style == null ? void 0 : style.italic) ? true : false,
+        textDecoration: (style == null ? void 0 : style.href) ? "underline" : (style == null ? void 0 : style.strikethrough) ? "strikethrough" : "none"
+      };
     }
   };
 
@@ -266,13 +346,16 @@
       return BlockParser.parseBlock(markdown);
     }
     static renderBlock(block, index) {
+      if (block.type === "list") {
+        return ListRenderer.renderList(block, index);
+      }
       return BlockRenderer.renderBlock(block, index);
     }
   };
 
   // widget-src/code.tsx
-  var { widget: widget2 } = figma;
-  var { AutoLayout: AutoLayout2, Input, Text: Text2, useSyncedState, usePropertyMenu } = widget2;
+  var { widget: widget3 } = figma;
+  var { AutoLayout: AutoLayout3, Input, Text: Text3, useSyncedState, usePropertyMenu } = widget3;
   function HackMDViewer() {
     const [url, setUrl] = useSyncedState("url", "");
     const [content, setContent] = useSyncedState("content", "");
@@ -321,23 +404,22 @@
     }));
     const renderContent = () => {
       if (loading) {
-        return /* @__PURE__ */ figma.widget.h(AutoLayout2, null, /* @__PURE__ */ figma.widget.h(Text2, null, "\u8F09\u5165\u4E2D..."));
+        return /* @__PURE__ */ figma.widget.h(AutoLayout3, null, /* @__PURE__ */ figma.widget.h(Text3, null, "\u8F09\u5165\u4E2D..."));
       }
       if (error) {
-        return /* @__PURE__ */ figma.widget.h(AutoLayout2, null, /* @__PURE__ */ figma.widget.h(Text2, {
+        return /* @__PURE__ */ figma.widget.h(AutoLayout3, null, /* @__PURE__ */ figma.widget.h(Text3, {
           fill: "#FF0000"
         }, error));
       }
       if (content) {
         const blocks = MarkdownParser.parseBlock(content);
-        console.log("Parsed blocks:", blocks);
-        return /* @__PURE__ */ figma.widget.h(AutoLayout2, {
+        return /* @__PURE__ */ figma.widget.h(AutoLayout3, {
           direction: "vertical"
         }, blocks.map((block, index) => MarkdownParser.renderBlock(block, index)));
       }
       return null;
     };
-    return /* @__PURE__ */ figma.widget.h(AutoLayout2, {
+    return /* @__PURE__ */ figma.widget.h(AutoLayout3, {
       direction: "vertical",
       padding: CONTAINER_SIZE.PADDING,
       width: CONTAINER_SIZE.WIDTH,
@@ -350,7 +432,7 @@
         blur: 4
       },
       spacing: 8
-    }, /* @__PURE__ */ figma.widget.h(AutoLayout2, {
+    }, /* @__PURE__ */ figma.widget.h(AutoLayout3, {
       width: "fill-parent",
       fill: "#eee",
       padding: 10,
@@ -365,5 +447,5 @@
       width: "fill-parent"
     })), renderContent());
   }
-  widget2.register(HackMDViewer);
+  widget3.register(HackMDViewer);
 })();

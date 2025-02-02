@@ -21,6 +21,7 @@ function HackMDViewer() {
     return match[1]
   }
 
+
   const fetchContent = async () => {
     if (!url) {
       setError('請輸入 HackMD 連結')
@@ -82,7 +83,6 @@ function HackMDViewer() {
 
     if (content) {
       const blocks = MarkdownParser.parseBlock(content)
-      console.log('Parsed blocks:', blocks)
       return (
         <AutoLayout direction="vertical">
           {blocks.map((block, index) => MarkdownParser.renderBlock(block, index))}

@@ -3,7 +3,7 @@ const { AutoLayout, Span, Text } = widget
 
 import { StyledBlock } from '../types/block';
 import { getTextStyle } from '../utils/styles';
-
+import { MARKDOWN_CONSTANTS, CONTAINER_SIZE } from '../constants/markdown';
 
 export class BlockRenderer {
   static renderBlock(block: StyledBlock, index: number) {
@@ -50,17 +50,34 @@ export class BlockRenderer {
   private static renderText(block: StyledBlock, index: number) {
     return (
       <Text
-        key={index}
-        fill="#232323"
-        fontSize={block.level ? 24 - block.level * 2 : 16}
-        fontWeight={block.type === 'heading' ? 'bold' : 'normal'}
-      >
-        {block.segments?.map((segment, segIndex) => (
-          <Span key={`${index}-${segIndex}`} {...getTextStyle(segment.style)}>
+      key={index}
+      width={CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2}
+      fill="#232323"
+      fontSize={
+        block.type === 'heading'
+          ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level as keyof typeof MARKDOWN_CONSTANTS.HEADING_SIZES]
+          : MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE
+      }
+      fontWeight={block.type === 'heading' ? 'extra-bold' : 'normal'}
+      lineHeight={
+        block.type === 'heading'
+          ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level as keyof typeof MARKDOWN_CONSTANTS.HEADING_SIZES] * 1.6
+          : 28
+      }
+    >
+      {block.segments ? (
+        block.segments.map((segment, segIndex) => (
+          <Span
+            key={`${index}-${segIndex}`}
+            {...getTextStyle(segment.style)}
+          >
             {segment.text}
           </Span>
-        ))}
-      </Text>
+        ))
+      ) : (
+        block.content
+      )}
+    </Text>
     );
   }
 }
