@@ -49,8 +49,57 @@
       let inCode = false;
       let inHighlight = false;
       let inStrikethrough = false;
+      let inUrl = false;
+      let urlText = "";
+      let url = "";
       let i = 0;
       while (i < text.length) {
+        if (text[i] === "[" && !inCode && !inBold && !inItalic && !inHighlight && !inStrikethrough) {
+          if (currentText.trim()) {
+            segments.push({
+              text: currentText,
+              style: {
+                bold: inBold,
+                italic: inItalic,
+                highlight: inHighlight,
+                strikethrough: inStrikethrough
+              }
+            });
+          }
+          currentText = "";
+          inUrl = true;
+          i++;
+          continue;
+        }
+        if (text[i] === "]" && inUrl) {
+          urlText = currentText;
+          currentText = "";
+          i++;
+          if (text[i] === "(" && i < text.length) {
+            i++;
+            while (i < text.length && text[i] !== ")") {
+              url += text[i];
+              i++;
+            }
+            if (text[i] === ")" && urlText.trim()) {
+              segments.push({
+                text: urlText,
+                style: {
+                  bold: inBold,
+                  italic: inItalic,
+                  highlight: inHighlight,
+                  strikethrough: inStrikethrough,
+                  href: url
+                }
+              });
+              inUrl = false;
+              urlText = "";
+              url = "";
+              i++;
+              continue;
+            }
+          }
+        }
         if (text[i] === "`" && !inBold && !inItalic) {
           if (currentText) {
             segments.push({
@@ -114,10 +163,15 @@
         currentText += text[i];
         i++;
       }
-      if (currentText) {
+      if (currentText.trim()) {
         segments.push({
-          text: InlineParser.cleanMarkdown(currentText),
-          style: { bold: inBold, italic: inItalic, code: inCode, highlight: inHighlight, strikethrough: inStrikethrough }
+          text: currentText,
+          style: {
+            bold: inBold,
+            italic: inItalic,
+            highlight: inHighlight,
+            strikethrough: inStrikethrough
+          }
         });
       }
       return segments;

@@ -13,9 +13,65 @@ export class InlineParser {
     let inCode = false;
     let inHighlight = false;
     let inStrikethrough = false;
+    let inUrl = false;
+    let urlText = '';
+    let url = '';
     let i = 0;
 
     while (i < text.length) {
+
+      // URL 解析邏輯 - 開始標記
+      if (text[i] === '[' && !inCode && !inBold && !inItalic && !inHighlight && !inStrikethrough) {
+        if (currentText.trim()) {  // 只有當有實際文字時才加入 segment
+          segments.push({
+            text: currentText,
+            style: { 
+              bold: inBold, 
+              italic: inItalic, 
+              highlight: inHighlight, 
+              strikethrough: inStrikethrough 
+            }
+          });
+        }
+        currentText = '';
+        inUrl = true;
+        i++;
+        continue;
+      }
+
+      // URL 解析邏輯 - 處理結束
+      if (text[i] === ']' && inUrl) {
+        urlText = currentText;
+        currentText = '';
+        i++;
+        
+        // 檢查 URL 部分
+        if (text[i] === '(' && i < text.length) {
+          i++; // 跳過 '('
+          while (i < text.length && text[i] !== ')') {
+            url += text[i];
+            i++;
+          }
+          if (text[i] === ')' && urlText.trim()) {  // 確保 urlText 不為空
+            segments.push({
+              text: urlText,
+              style: { 
+                bold: inBold, 
+                italic: inItalic, 
+                highlight: inHighlight, 
+                strikethrough: inStrikethrough,
+                href: url 
+              }
+            });
+            inUrl = false;
+            urlText = '';
+            url = '';
+            i++;
+            continue;
+          }
+        }
+      }
+
       // code inline `文字`
       if (text[i] === '`' && !inBold && !inItalic) {
         if (currentText) {
@@ -88,10 +144,15 @@ export class InlineParser {
       i++;
     }
 
-    if (currentText) {
+    if (currentText.trim()) {
       segments.push({
-        text: InlineParser.cleanMarkdown(currentText), // 改用 InlineParser.cleanMarkdown
-        style: { bold: inBold, italic: inItalic, code: inCode, highlight: inHighlight, strikethrough: inStrikethrough },
+        text: currentText,
+        style: { 
+          bold: inBold, 
+          italic: inItalic, 
+          highlight: inHighlight, 
+          strikethrough: inStrikethrough 
+        }
       });
     }
 
