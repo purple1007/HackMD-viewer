@@ -36,7 +36,8 @@ export class BlockRenderer {
             </Text>
             <Text width="fill-parent">
               {item.segments?.map((segment, segIndex) => (
-                <Span key={segIndex} {...getTextStyle(segment.style)}>
+                <Span key={segIndex} 
+                  {...getTextStyle(segment.style , segment.href)}>
                   {segment.text}
                 </Span>
               ))}
@@ -69,7 +70,7 @@ export class BlockRenderer {
         block.segments.map((segment, segIndex) => (
           <Span
             key={`${index}-${segIndex}`}
-            {...getTextStyle(segment.style)}
+            {...getTextStyle(segment.style , segment.href)}
           >
             {segment.text}
           </Span>

@@ -1,6 +1,7 @@
 const { widget } = figma
 const { AutoLayout, Input, Text, useSyncedState, usePropertyMenu } = widget as any
 
+import { Parser } from '../node_modules/marked/lib/marked'
 import { MarkdownParser } from './MarkdownParser'
 import { CONTAINER_SIZE } from './constants/markdown'
 
@@ -41,6 +42,7 @@ function HackMDViewer() {
       
       const content = await publicResponse.text()
       setContent(content)
+      
     } catch (err) {
       const error = err as Error
       setError(error.message || '無法讀取文件，請確認文件權限或 API Key 設定')
@@ -83,13 +85,13 @@ function HackMDViewer() {
 
     if (content) {
       const blocks = MarkdownParser.parseBlock(content)
+      console.log('Parsed blocks:', blocks)
       return (
         <AutoLayout direction="vertical">
           {blocks.map((block, index) => MarkdownParser.renderBlock(block, index))}
         </AutoLayout>
       )
     }
-
     return null
   }
 

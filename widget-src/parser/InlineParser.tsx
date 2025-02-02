@@ -55,12 +55,12 @@ export class InlineParser {
           if (text[i] === ')' && urlText.trim()) {  // 確保 urlText 不為空
             segments.push({
               text: urlText,
+              href: url,
               style: { 
                 bold: inBold, 
                 italic: inItalic, 
                 highlight: inHighlight, 
                 strikethrough: inStrikethrough,
-                href: url 
               }
             });
             inUrl = false;

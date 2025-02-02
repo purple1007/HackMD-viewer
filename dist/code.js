@@ -84,12 +84,12 @@
             if (text[i] === ")" && urlText.trim()) {
               segments.push({
                 text: urlText,
+                href: url,
                 style: {
                   bold: inBold,
                   italic: inItalic,
                   highlight: inHighlight,
-                  strikethrough: inStrikethrough,
-                  href: url
+                  strikethrough: inStrikethrough
                 }
               });
               inUrl = false;
@@ -274,14 +274,15 @@
   };
 
   // widget-src/utils/styles.ts
-  var getTextStyle = (style) => {
-    return {
+  var getTextStyle = (style, href) => {
+    const textDecoration = href ? "underline" : (style == null ? void 0 : style.strikethrough) ? "strikethrough" : "none";
+    return __spreadValues({
       fontWeight: (style == null ? void 0 : style.bold) ? "bold" : "normal",
-      fill: (style == null ? void 0 : style.href) ? "#0066CC" : (style == null ? void 0 : style.highlight) ? "#DFA424" : "#232323",
-      italic: (style == null ? void 0 : style.italic) ? true : false,
-      textDecoration: (style == null ? void 0 : style.href) ? "underline" : (style == null ? void 0 : style.strikethrough) ? "strikethrough" : "none",
+      fill: href ? "#0066CC" : (style == null ? void 0 : style.highlight) ? "#DFA424" : "#232323",
+      italic: Boolean(style == null ? void 0 : style.italic),
+      textDecoration,
       fontSize: MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE
-    };
+    }, href && { href });
   };
 
   // widget-src/renderer/BlockRenderer.tsx
@@ -317,7 +318,7 @@
           width: "fill-parent"
         }, (_a2 = item.segments) == null ? void 0 : _a2.map((segment, segIndex) => /* @__PURE__ */ figma.widget.h(Span, __spreadValues({
           key: segIndex
-        }, getTextStyle(segment.style)), segment.text))));
+        }, getTextStyle(segment.style, segment.href)), segment.text))));
       }));
     }
     static renderText(block, index) {
@@ -330,7 +331,7 @@
         lineHeight: block.type === "heading" ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level] * 1.6 : 28
       }, block.segments ? block.segments.map((segment, segIndex) => /* @__PURE__ */ figma.widget.h(Span, __spreadValues({
         key: `${index}-${segIndex}`
-      }, getTextStyle(segment.style)), segment.text)) : block.content);
+      }, getTextStyle(segment.style, segment.href)), segment.text)) : block.content);
     }
   };
 
@@ -381,16 +382,8 @@
           width: "fill-parent"
         }, (_a2 = item.segments) == null ? void 0 : _a2.map((segment, segIndex) => /* @__PURE__ */ figma.widget.h(Span2, __spreadValues({
           key: segIndex
-        }, this.getTextStyle(segment.style)), segment.text))));
+        }, getTextStyle(segment.style, segment.href)), segment.text))));
       }));
-    }
-    static getTextStyle(style) {
-      return {
-        fontWeight: (style == null ? void 0 : style.bold) ? "bold" : "normal",
-        fill: (style == null ? void 0 : style.href) ? "#0066CC" : "#232323",
-        italic: (style == null ? void 0 : style.italic) ? true : false,
-        textDecoration: (style == null ? void 0 : style.href) ? "underline" : (style == null ? void 0 : style.strikethrough) ? "strikethrough" : "none"
-      };
     }
   };
 
@@ -467,6 +460,7 @@
       }
       if (content) {
         const blocks = MarkdownParser.parseBlock(content);
+        console.log("Parsed blocks:", blocks);
         return /* @__PURE__ */ figma.widget.h(AutoLayout3, {
           direction: "vertical"
         }, blocks.map((block, index) => MarkdownParser.renderBlock(block, index)));

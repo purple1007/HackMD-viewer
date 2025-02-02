@@ -1,9 +1,12 @@
 const { widget } = figma
 const { AutoLayout, Span, Text, SVG } = widget
+import { getTextStyle } from '../utils/styles';
 
 import { CheckIcon, UnCheckIcon, Dot } from '../components/icons';
 import { StyledBlock } from '../types/block';
+import { TextSegment } from '../types/text';
 import { CONTAINER_SIZE } from '../constants/markdown';
+
 
 export class ListRenderer {
   static renderList(block: StyledBlock, index: number) {
@@ -33,7 +36,8 @@ export class ListRenderer {
             )}
             <Text width="fill-parent">
               {item.segments?.map((segment, segIndex) => (
-                <Span key={segIndex} {...this.getTextStyle(segment.style)}>
+                <Span key={segIndex} 
+                  {...getTextStyle(segment.style , segment.href)} >
                   {segment.text}
                 </Span>
               ))}
@@ -42,14 +46,5 @@ export class ListRenderer {
         ))}
       </AutoLayout>
     );
-  }
-
-  static getTextStyle(style?: { bold?: boolean; italic?: boolean; href?: string; strikethrough?: boolean }) {
-    return {
-      fontWeight: style?.bold ? 'bold' : 'normal' as 'bold' | 'normal',
-      fill: style?.href ? "#0066CC" : "#232323",
-      italic: style?.italic ? true : false,
-      textDecoration: style?.href ? "underline" : style?.strikethrough ? "strikethrough" as 'none' | 'strikethrough' | 'underline' : "none" as 'none' | 'strikethrough' | 'underline',
-    };
   }
 }

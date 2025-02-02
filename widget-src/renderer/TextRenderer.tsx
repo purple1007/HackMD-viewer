@@ -11,10 +11,7 @@ export class TextRenderer {
         {segments.map((segment, index) => (
           <Span
             key={index}
-            fontWeight={segment.style?.bold ? 'bold' : 'normal'}
-            fill={segment.style?.href ? "#0066CC" : segment.style?.highlight ? "#DFA424" : "#232323"}
-            italic={segment.style?.italic}
-            textDecoration={segment.style?.href ? "underline" : segment.style?.strikethrough ? "strikethrough" : "none"}
+              {...getTextStyle(segment.style , segment.href)}  
           >
             {segment.text}
           </Span>
