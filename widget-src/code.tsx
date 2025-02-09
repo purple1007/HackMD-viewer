@@ -2,10 +2,13 @@ const { widget } = figma
 const { AutoLayout, Input, Text, useSyncedState, usePropertyMenu, useEffect, useWidgetId } = widget
 
 import { Parser } from '../node_modules/marked/lib/marked'
-import { HackMDButton } from './components/hackMDButton'
+
 import { MarkdownParser } from './MarkdownParser'
 import { CONTAINER_SIZE } from './constants/markdown'
 import { getHackMDId } from './utils/hackMDId'
+
+import { HackMDButton } from './components/hackMDButton'
+import { ContentLayout } from './components/contentLayout'
 
 function HackMDViewer() {
   
@@ -57,17 +60,13 @@ function HackMDViewer() {
   const renderContent = () => {
     if (loading) {
       return (
-        <AutoLayout>
           <Text>載入中...</Text>
-        </AutoLayout>
       )
     }
 
     if (error) {
       return (
-        <AutoLayout>
           <Text fill="#FF0000">{error}</Text>
-        </AutoLayout>
       )
     }
 
@@ -76,7 +75,7 @@ function HackMDViewer() {
       console.log('URL:', url)
       console.log('Parsed blocks:', blocks)
       return (
-        <AutoLayout direction="vertical">
+        <AutoLayout direction="vertical" width="fill-parent">
           {blocks.map((block, index) => MarkdownParser.renderBlock(block, index))}
         </AutoLayout>
       )
@@ -98,22 +97,9 @@ function HackMDViewer() {
               }}
             />
           ) : (
-          <AutoLayout
-                  direction="vertical"
-                  padding={CONTAINER_SIZE.PADDING}
-                  width="hug-contents"
-                  fill="#F5F5F5"
-                  cornerRadius={8}
-                  effect={{
-                    type: 'drop-shadow',
-                    color: { r: 0, g: 0, b: 0, a: 0.1 },
-                    offset: { x: 0, y: 2 },
-                    blur: 4
-                  }}
-                  spacing={8}
-              >
+            <ContentLayout>
               {renderContent()}
-              </AutoLayout>
+            </ContentLayout>
           )}
     </AutoLayout>
   )

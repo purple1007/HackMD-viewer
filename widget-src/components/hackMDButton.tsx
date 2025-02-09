@@ -127,9 +127,6 @@ export const HackMDButton = ({ onSuccess }: HackMDButtonProps) => {
         horizontalAlignItems="center"
         verticalAlignItems="center"
       >
-        <Frame name="Link" strokeWidth={0.125} width={19} height={19}>
-          <SVG name="Vector_Vector_Vector" height={19} width={19} src={LinkIcon} />
-        </Frame>
         <Text
           name="Get started"
           fill="#FFF"
