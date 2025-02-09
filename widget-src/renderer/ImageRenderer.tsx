@@ -5,13 +5,23 @@ import { styledImage } from '../types/block'
 
 export class ImageRenderer {
   static renderImage(block: styledImage, index: number) {
-    檢查圖片 URL 是否有效
+    // 檢查圖片 URL 是否有效
     const isValidUrl = (url: string) => {
       try {
-        new URL(url);
-        return true;
+        console.log('Checking URL:', url); // 新增這行來查看原始 URL
+        
+        // 使用正規表達式來驗證 URL
+        const urlPattern = new RegExp(
+          '^(https?:\\/\\/)?'+ // protocol
+          '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name
+          '((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
+          '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+ // port and path
+          '(\\?[;&a-z\\d%_.~+=-]*)?'+ // query string
+          '(\\#[-a-z\\d_]*)?$','i' // fragment locator
+        );
+        return urlPattern.test(url);
       } catch (e) {
-        console.error(`Invalid URL: ${url}`);
+        console.error(`Error checking URL: ${url}`, e);
         return false;
       }
     };

@@ -366,6 +366,14 @@
 <circle cx="7" cy="7" r="3" fill="#232323"/>
 </svg>
 `;
+  var ImageBroken = `<svg width="36" height="34" viewBox="0 0 36 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path opacity="0.2" d="M19.3516 20.9594L13.2578 14.8656C13.1417 14.7494 13.0039 14.6572 12.8521 14.5943C12.7004 14.5314 12.5377 14.499 12.3734 14.499C12.2092 14.499 12.0465 14.5314 11.8948 14.5943C11.743 14.6572 11.6052 14.7494 11.4891 14.8656L3 23.3578V5.75C3 5.41848 3.1317 5.10054 3.36612 4.86612C3.60054 4.6317 3.91848 4.5 4.25 4.5H31.75C32.0815 4.5 32.3995 4.6317 32.6339 4.86612C32.8683 5.10054 33 5.41848 33 5.75V10.75L25.5 13.25L23 19.5L19.3516 20.9594Z" fill="#E29898"/>
+<path d="M14.25 29.5H4.25C3.91848 29.5 3.60054 29.3683 3.36612 29.1339C3.1317 28.8995 3 28.5815 3 28.25V5.75C3 5.41848 3.1317 5.10054 3.36612 4.86612C3.60054 4.6317 3.91848 4.5 4.25 4.5H31.75C32.0815 4.5 32.3995 4.6317 32.6339 4.86612C32.8683 5.10054 33 5.41848 33 5.75V10.75L25.5 13.25L23 19.5L16.75 22L14.25 29.5Z" stroke="#E29898" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M19.5203 29.5L20.7609 25.7812L26.8546 23.3468L29.289 17.2531L33.0078 16.0125V28.25C33.0078 28.5815 32.8761 28.8994 32.6416 29.1338C32.4072 29.3683 32.0893 29.5 31.7578 29.5H19.5203Z" stroke="#E29898" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M3 23.3578L11.4906 14.8656C11.6067 14.7494 11.7446 14.6572 11.8963 14.5943C12.0481 14.5314 12.2107 14.499 12.375 14.499C12.5393 14.499 12.7019 14.5314 12.8537 14.5943C13.0054 14.6572 13.1433 14.7494 13.2594 14.8656L19.3531 20.9594" stroke="#E29898" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+
+`;
 
   // widget-src/renderer/ListRenderer.tsx
   var { widget: widget2 } = figma;
@@ -409,6 +417,39 @@
   var { AutoLayout: AutoLayout3, Image, Text: Text3, Span: Span3, SVG: SVG2 } = widget3;
   var ImageRenderer = class {
     static renderImage(block, index) {
+      const isValidUrl = (url) => {
+        try {
+          console.log("Checking URL:", url);
+          const urlPattern = new RegExp("^(https?:\\/\\/)?((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|((\\d{1,3}\\.){3}\\d{1,3}))(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*(\\?[;&a-z\\d%_.~+=-]*)?(\\#[-a-z\\d_]*)?$", "i");
+          return urlPattern.test(url);
+        } catch (e) {
+          console.error(`Error checking URL: ${url}`, e);
+          return false;
+        }
+      };
+      if (!isValidUrl(block.src)) {
+        const RedText = "#CF7E7E";
+        return /* @__PURE__ */ figma.widget.h(AutoLayout3, {
+          key: index,
+          padding: 12,
+          width: "fill-parent",
+          fill: "#F2E1E3",
+          direction: "vertical",
+          spacing: 6,
+          cornerRadius: 4
+        }, /* @__PURE__ */ figma.widget.h(SVG2, {
+          src: ImageBroken
+        }), /* @__PURE__ */ figma.widget.h(Text3, {
+          fill: RedText
+        }, "\u5716\u7247\u7DB2\u5740\u7121\u6548"), /* @__PURE__ */ figma.widget.h(Text3, {
+          fill: RedText
+        }, "\u5716\u7247\u7DB2\u5740\uFF1A", /* @__PURE__ */ figma.widget.h(Span3, {
+          href: block.src,
+          textDecoration: "underline"
+        }, block.src), " "), /* @__PURE__ */ figma.widget.h(Text3, {
+          fill: RedText
+        }, " \u7DB2\u5740\u7121\u6548\u7684\u539F\u56E0\uFF0C\u53EF\u80FD\u662F CORS \u554F\u984C\uFF0C\u8ACB\u66F4\u63DB\u5716\u7247\u7DB2\u5740\u3002"));
+      }
       return /* @__PURE__ */ figma.widget.h(Image, {
         key: index,
         src: block.src,
