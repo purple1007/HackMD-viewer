@@ -16,9 +16,14 @@ function HackMDViewer() {
   const [content, setContent] = useSyncedState('content', '')
   const [loading, setLoading] = useSyncedState('loading', false)
   const [error, setError] = useSyncedState('error', '')
+  const [lastSyncTime, setLastSyncTime] = useSyncedState('lastSyncTime', '')
 
   const fetchHackMDContent = async (hackmdUrl: string, noteId?: string) => {
     try {
+      const requestTime = new Date().Date().toUTCString()
+      setLastSyncTime(requestTime)
+      // console.log('開始更新文件時間:', requestTime)
+
       setLoading(true)
       setError('')
       
@@ -31,6 +36,7 @@ function HackMDViewer() {
       
       const content = await publicResponse.text()
       await setContent(content)
+
     } catch (err) {
       const error = err as Error
       setError(error.message || '無法讀取文件，請確認網址連結或瀏覽權限')
@@ -97,7 +103,7 @@ function HackMDViewer() {
               }}
             />
           ) : (
-            <ContentLayout>
+            <ContentLayout lastSyncTime={lastSyncTime} url={url}>
               {renderContent()}
             </ContentLayout>
           )}

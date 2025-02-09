@@ -3,7 +3,12 @@ const { widget } = figma;
 const { AutoLayout, Text, Frame, SVG, Line } = widget;
 import { LinkIcon } from './icons';
 
-export const ContentLayout = ({ children }: ContentLayoutProps) => {
+interface ContentLayoutProps {
+  children: React.ReactNode;
+  lastSyncTime?: string;
+}
+
+export const ContentLayout = ({ children, url, lastSyncTime }: ContentLayoutProps) => {
   return (
     <AutoLayout
       name="Container"
@@ -32,10 +37,7 @@ export const ContentLayout = ({ children }: ContentLayoutProps) => {
           cornerRadius={4}
           overflow="visible"
           spacing={2}
-          padding={{
-            vertical: 4,
-            horizontal: 10,
-          }}
+          padding={{ vertical: 4, horizontal: 10 }}
           horizontalAlignItems="end"
           verticalAlignItems="center"
         >
@@ -56,6 +58,7 @@ export const ContentLayout = ({ children }: ContentLayoutProps) => {
             name="Link Text"
             fill="#564DFF"
             fontFamily="Inter"
+            href={url}
           >
             View Original Note{" "}
           </Text>
@@ -103,7 +106,7 @@ export const ContentLayout = ({ children }: ContentLayoutProps) => {
               fontSize={14}
               fontWeight={500}
             >
-              Sun, 09 Feb 2025 12:39:10 GMT
+              {lastSyncTime || 'Not synced yet'}
             </Text>
           </AutoLayout>
         </AutoLayout>

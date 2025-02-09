@@ -655,7 +655,7 @@
   // widget-src/components/contentLayout.tsx
   var { widget: widget5 } = figma;
   var { AutoLayout: AutoLayout5, Text: Text5, Frame: Frame2, SVG: SVG4, Line } = widget5;
-  var ContentLayout = ({ children }) => {
+  var ContentLayout = ({ children, url, lastSyncTime }) => {
     return /* @__PURE__ */ figma.widget.h(AutoLayout5, {
       name: "Container",
       fill: "#FAFAFA",
@@ -681,10 +681,7 @@
       cornerRadius: 4,
       overflow: "visible",
       spacing: 2,
-      padding: {
-        vertical: 4,
-        horizontal: 10
-      },
+      padding: { vertical: 4, horizontal: 10 },
       horizontalAlignItems: "end",
       verticalAlignItems: "center"
     }, /* @__PURE__ */ figma.widget.h(Frame2, {
@@ -700,7 +697,8 @@
     })), /* @__PURE__ */ figma.widget.h(Text5, {
       name: "Link Text",
       fill: "#564DFF",
-      fontFamily: "Inter"
+      fontFamily: "Inter",
+      href: url
     }, "View Original Note", " "))), /* @__PURE__ */ figma.widget.h(Line, {
       length: "fill-parent",
       stroke: "#D9D9D9"
@@ -738,7 +736,7 @@
       fontFamily: "Inter",
       fontSize: 14,
       fontWeight: 500
-    }, "Sun, 09 Feb 2025 12:39:10 GMT"))));
+    }, lastSyncTime || "Not synced yet"))));
   };
 
   // widget-src/code.tsx
@@ -749,8 +747,11 @@
     const [content, setContent] = useSyncedState("content", "");
     const [loading, setLoading] = useSyncedState("loading", false);
     const [error, setError] = useSyncedState("error", "");
+    const [lastSyncTime, setLastSyncTime] = useSyncedState("lastSyncTime", "");
     const fetchHackMDContent = (hackmdUrl, noteId) => __async(this, null, function* () {
       try {
+        const requestTime = new Date().Date().toUTCString();
+        setLastSyncTime(requestTime);
         setLoading(true);
         setError("");
         const usedNoteId = noteId || getHackMDId(hackmdUrl);
@@ -808,7 +809,10 @@
         yield setUrl(url2);
         yield fetchHackMDContent(url2, noteId);
       })
-    }) : /* @__PURE__ */ figma.widget.h(ContentLayout, null, renderContent()));
+    }) : /* @__PURE__ */ figma.widget.h(ContentLayout, {
+      lastSyncTime,
+      url
+    }, renderContent()));
   }
   widget6.register(HackMDViewer);
 })();
