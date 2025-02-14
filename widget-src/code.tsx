@@ -1,8 +1,6 @@
 const { widget } = figma
 const { AutoLayout, Input, Text, useSyncedState, usePropertyMenu, useEffect, useWidgetId } = widget
 
-import { Parser } from '../node_modules/marked/lib/marked'
-
 import { MarkdownParser } from './MarkdownParser'
 import { CONTAINER_SIZE } from './constants/markdown'
 import { getHackMDId } from './utils/hackMDId'
@@ -81,7 +79,7 @@ function HackMDViewer() {
       return (
         <AutoLayout direction="vertical" width="fill-parent">
           {blocks.map((block, index) => MarkdownParser.renderBlock(block, index))}
-        </AutoLayout>
+          </AutoLayout>
       )
     }
     return null

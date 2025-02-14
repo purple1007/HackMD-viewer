@@ -1,7 +1,7 @@
 {
-  "name": "my first widget",
+  "name": "hackmd-viewer",
   "version": "1.0.0",
-  "description": "My first Widget",
+  "description": "A viewer for HackMD documents",
   "scripts": {
     "test": "npm run tsc && npm run build",
     "format": "prettier --write .",

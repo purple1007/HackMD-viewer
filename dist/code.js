@@ -302,56 +302,6 @@
     }, href && { href });
   };
 
-  // widget-src/renderer/BlockRenderer.tsx
-  var { widget } = figma;
-  var { AutoLayout, Span, Text } = widget;
-  var BlockRenderer = class {
-    static renderBlock(block, index) {
-      if (block.type === "list") {
-        return this.renderList(block, index);
-      }
-      return this.renderText(block, index);
-    }
-    static renderList(block, index) {
-      var _a;
-      return /* @__PURE__ */ figma.widget.h(AutoLayout, {
-        key: index,
-        direction: "vertical",
-        spacing: 12,
-        padding: { top: 12, bottom: 12 }
-      }, (_a = block.items) == null ? void 0 : _a.map((item, itemIndex) => {
-        var _a2;
-        return /* @__PURE__ */ figma.widget.h(AutoLayout, {
-          key: itemIndex,
-          direction: "horizontal",
-          spacing: 3,
-          verticalAlignItems: "center",
-          width: "fill-parent",
-          padding: { left: 6 }
-        }, /* @__PURE__ */ figma.widget.h(Text, {
-          fill: "#232323",
-          width: 18
-        }, item.ordered ? `${itemIndex + 1}.` : ""), /* @__PURE__ */ figma.widget.h(Text, {
-          width: "fill-parent"
-        }, (_a2 = item.segments) == null ? void 0 : _a2.map((segment, segIndex) => /* @__PURE__ */ figma.widget.h(Span, __spreadValues({
-          key: segIndex
-        }, getTextStyle(segment.style, segment.href)), segment.text))));
-      }));
-    }
-    static renderText(block, index) {
-      return /* @__PURE__ */ figma.widget.h(Text, {
-        key: index,
-        width: CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2,
-        fill: "#232323",
-        fontSize: block.type === "heading" ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level] : MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE,
-        fontWeight: block.type === "heading" ? "extra-bold" : "normal",
-        lineHeight: block.type === "heading" ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level] * 1.6 : 28
-      }, block.segments ? block.segments.map((segment, segIndex) => /* @__PURE__ */ figma.widget.h(Span, __spreadValues({
-        key: `${index}-${segIndex}`
-      }, getTextStyle(segment.style, segment.href)), segment.text)) : block.content);
-    }
-  };
-
   // widget-src/components/icons.tsx
   var UnCheckIcon = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M3 5C3 3.89543 3.89543 3 5 3H17C18.1046 3 19 3.89543 19 5V17C19 18.1046 18.1046 19 17 19H5C3.89543 19 3 18.1046 3 17V5Z" fill="#564DFF"/>
@@ -405,12 +355,12 @@
 </svg>`;
 
   // widget-src/renderer/ListRenderer.tsx
-  var { widget: widget2 } = figma;
-  var { AutoLayout: AutoLayout2, Span: Span2, Text: Text2, SVG } = widget2;
+  var { widget } = figma;
+  var { AutoLayout, Span, Text, SVG } = widget;
   var ListRenderer = class {
     static renderList(block, index) {
       var _a;
-      return /* @__PURE__ */ figma.widget.h(AutoLayout2, {
+      return /* @__PURE__ */ figma.widget.h(AutoLayout, {
         key: index,
         direction: "vertical",
         width: CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2,
@@ -418,26 +368,50 @@
         padding: { top: 12, bottom: 12 }
       }, (_a = block.items) == null ? void 0 : _a.map((item, itemIndex) => {
         var _a2;
-        return /* @__PURE__ */ figma.widget.h(AutoLayout2, {
+        return /* @__PURE__ */ figma.widget.h(AutoLayout, {
           key: itemIndex,
           direction: "horizontal",
           spacing: 3,
           verticalAlignItems: "center",
           width: "fill-parent",
           padding: { left: 6 }
-        }, item.ordered ? /* @__PURE__ */ figma.widget.h(Text2, {
+        }, item.ordered ? /* @__PURE__ */ figma.widget.h(Text, {
           fill: "#232323",
           width: 18
         }, itemIndex + 1, ".") : item.checkable ? /* @__PURE__ */ figma.widget.h(SVG, {
           src: item.checked ? CheckIcon : UnCheckIcon
         }) : /* @__PURE__ */ figma.widget.h(SVG, {
           src: Dot
-        }), /* @__PURE__ */ figma.widget.h(Text2, {
+        }), /* @__PURE__ */ figma.widget.h(Text, {
           width: "fill-parent"
-        }, (_a2 = item.segments) == null ? void 0 : _a2.map((segment, segIndex) => /* @__PURE__ */ figma.widget.h(Span2, __spreadValues({
+        }, (_a2 = item.segments) == null ? void 0 : _a2.map((segment, segIndex) => /* @__PURE__ */ figma.widget.h(Span, __spreadValues({
           key: segIndex
         }, getTextStyle(segment.style, segment.href)), segment.text))));
       }));
+    }
+  };
+
+  // widget-src/renderer/BlockRenderer.tsx
+  var { widget: widget2 } = figma;
+  var { AutoLayout: AutoLayout2, Span: Span2, Text: Text2 } = widget2;
+  var BlockRenderer = class {
+    static renderBlock(block, index) {
+      if (block.type === "list") {
+        return ListRenderer.renderList(block, index);
+      }
+      return this.renderText(block, index);
+    }
+    static renderText(block, index) {
+      return /* @__PURE__ */ figma.widget.h(Text2, {
+        key: index,
+        width: CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2,
+        fill: "#232323",
+        fontSize: block.type === "heading" ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level] : MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE,
+        fontWeight: block.type === "heading" ? "extra-bold" : "normal",
+        lineHeight: block.type === "heading" ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level] * 1.6 : 28
+      }, block.segments ? block.segments.map((segment, segIndex) => /* @__PURE__ */ figma.widget.h(Span2, __spreadValues({
+        key: `${index}-${segIndex}`
+      }, getTextStyle(segment.style, segment.href)), segment.text)) : block.content);
     }
   };
 
@@ -448,7 +422,6 @@
     static renderImage(block, index) {
       const isValidUrl = (url) => {
         try {
-          console.log("Checking URL:", url);
           const urlPattern = new RegExp("^(https?:\\/\\/)?((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|((\\d{1,3}\\.){3}\\d{1,3}))(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*(\\?[;&a-z\\d%_.~+=-]*)?(\\#[-a-z\\d_]*)?$", "i");
           return urlPattern.test(url);
         } catch (e) {

@@ -8,7 +8,6 @@ export class ImageRenderer {
     // 檢查圖片 URL 是否有效
     const isValidUrl = (url: string) => {
       try {
-        console.log('Checking URL:', url); // 新增這行來查看原始 URL
         // 使用正規表達式來驗證 URL
         const urlPattern = new RegExp(
           '^(https?:\\/\\/)?'+ // protocol
