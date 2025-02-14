@@ -20,10 +20,8 @@ function HackMDViewer() {
 
   const fetchHackMDContent = async (hackmdUrl: string, noteId?: string) => {
     try {
-      const requestTime = new Date().Date().toUTCString()
+      const requestTime = new Date().toUTCString()
       setLastSyncTime(requestTime)
-      // console.log('開始更新文件時間:', requestTime)
-
       setLoading(true)
       setError('')
       

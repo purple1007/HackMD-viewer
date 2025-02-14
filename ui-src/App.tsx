@@ -10,17 +10,27 @@ function App() {
     try {
       const noteId = getHackMDId(url);
       setError("");
-      
-      parent.postMessage({ 
-        pluginMessage: { 
-          type: 'url', 
-          value: url,
-          noteId: noteId 
-        } 
-      }, '*');
 
-    } catch (err) {
-      setError(err.message);
+      if (window.parent) {
+        window.parent.postMessage(
+          { 
+            pluginMessage: { 
+              type: 'url', 
+              value: url,
+              noteId: noteId 
+            } 
+          },
+          '*'
+        );
+      }
+
+
+    } catch  (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('發生未知錯誤');
+      } 
     }
   };
 

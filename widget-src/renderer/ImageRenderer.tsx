@@ -9,7 +9,6 @@ export class ImageRenderer {
     const isValidUrl = (url: string) => {
       try {
         console.log('Checking URL:', url); // 新增這行來查看原始 URL
-        
         // 使用正規表達式來驗證 URL
         const urlPattern = new RegExp(
           '^(https?:\\/\\/)?'+ // protocol

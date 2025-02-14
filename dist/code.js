@@ -750,7 +750,7 @@
     const [lastSyncTime, setLastSyncTime] = useSyncedState("lastSyncTime", "");
     const fetchHackMDContent = (hackmdUrl, noteId) => __async(this, null, function* () {
       try {
-        const requestTime = new Date().Date().toUTCString();
+        const requestTime = new Date().toUTCString();
         setLastSyncTime(requestTime);
         setLoading(true);
         setError("");
