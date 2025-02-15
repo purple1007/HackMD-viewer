@@ -104,7 +104,13 @@
           if (currentText) {
             segments.push({
               text: currentText,
-              style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough }
+              style: {
+                bold: inBold,
+                italic: inItalic,
+                highlight: inHighlight,
+                strikethrough: inStrikethrough,
+                code: inCode
+              }
             });
             currentText = "";
           }
@@ -116,7 +122,13 @@
           if (currentText) {
             segments.push({
               text: currentText,
-              style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough }
+              style: {
+                bold: inBold,
+                italic: inItalic,
+                highlight: inHighlight,
+                strikethrough: inStrikethrough,
+                code: inCode
+              }
             });
             currentText = "";
           }
@@ -128,7 +140,13 @@
           if (currentText) {
             segments.push({
               text: currentText,
-              style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough }
+              style: {
+                bold: inBold,
+                italic: inItalic,
+                highlight: inHighlight,
+                strikethrough: inStrikethrough,
+                code: inCode
+              }
             });
             currentText = "";
           }
@@ -140,7 +158,13 @@
           if (currentText) {
             segments.push({
               text: currentText,
-              style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough }
+              style: {
+                bold: inBold,
+                italic: inItalic,
+                highlight: inHighlight,
+                strikethrough: inStrikethrough,
+                code: inCode
+              }
             });
             currentText = "";
           }
@@ -152,7 +176,13 @@
           if (currentText) {
             segments.push({
               text: currentText,
-              style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough }
+              style: {
+                bold: inBold,
+                italic: inItalic,
+                highlight: inHighlight,
+                strikethrough: inStrikethrough,
+                code: inCode
+              }
             });
             currentText = "";
           }
@@ -297,10 +327,11 @@
     const textDecoration = href ? "underline" : (style == null ? void 0 : style.strikethrough) ? "strikethrough" : "none";
     return __spreadValues({
       fontWeight: (style == null ? void 0 : style.bold) ? "bold" : "normal",
-      fill: href ? MD_CONST.COLOR.PRIMARY : (style == null ? void 0 : style.highlight) ? MD_CONST.COLOR.HIGHLIGHT : MD_CONST.COLOR.BLACK,
+      fill: href ? MD_CONST.COLOR.PRIMARY : (style == null ? void 0 : style.code) ? MD_CONST.COLOR.GRAY : (style == null ? void 0 : style.highlight) ? MD_CONST.COLOR.HIGHLIGHT : MD_CONST.COLOR.BLACK,
       italic: Boolean(style == null ? void 0 : style.italic),
       textDecoration,
-      fontSize: MD_CONST.FONT_SIZE
+      fontSize: MD_CONST.FONT_SIZE,
+      fontFamily: (style == null ? void 0 : style.code) ? "JetBrains Mono" : "Inter"
     }, href && { href });
   };
 

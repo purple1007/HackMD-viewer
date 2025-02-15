@@ -77,7 +77,13 @@ export class InlineParser {
         if (currentText) {
           segments.push({
             text: currentText,
-            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough },
+            style: { 
+              bold: inBold, 
+              italic: inItalic, 
+              highlight: inHighlight, 
+              strikethrough: inStrikethrough,
+              code: inCode 
+            },
           });
           currentText = '';
         }
@@ -90,7 +96,13 @@ export class InlineParser {
         if (currentText) {
           segments.push({
             text: currentText,
-            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough },
+            style: { 
+              bold: inBold, 
+              italic: inItalic, 
+              highlight: inHighlight, 
+              strikethrough: inStrikethrough,
+              code: inCode 
+            },
           });
           currentText = '';
         }
@@ -104,7 +116,13 @@ export class InlineParser {
         if (currentText) {
           segments.push({
             text: currentText,
-            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough },
+            style: { 
+              bold: inBold, 
+              italic: inItalic, 
+              highlight: inHighlight, 
+              strikethrough: inStrikethrough,
+              code: inCode 
+            },
           });
           currentText = '';
         }
@@ -117,7 +135,13 @@ export class InlineParser {
         if (currentText) {
           segments.push({
             text: currentText,
-            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough },
+            style: { 
+              bold: inBold, 
+              italic: inItalic, 
+              highlight: inHighlight, 
+              strikethrough: inStrikethrough,
+              code: inCode 
+            },
           });
           currentText = '';
         }
@@ -131,7 +155,13 @@ export class InlineParser {
         if (currentText) {
           segments.push({
             text: currentText,
-            style: { bold: inBold, italic: inItalic, highlight: inHighlight, strikethrough: inStrikethrough },
+            style: { 
+              bold: inBold, 
+              italic: inItalic, 
+              highlight: inHighlight, 
+              strikethrough: inStrikethrough,
+              code: inCode 
+            },
           });
           currentText = '';
         }
