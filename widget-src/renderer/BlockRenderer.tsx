@@ -17,35 +17,36 @@ export class BlockRenderer {
 
   private static renderText(block: StyledBlock, index: number) {
     return (
-      <Text
-        key={index}
-        width={CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2}
-        fill={MD_CONST.COLOR.BLACK}
-        fontSize={
-          block.type === 'heading'
-            ? MD_CONST.HEADING_SIZES[block.level as keyof typeof MD_CONST.HEADING_SIZES]
-            : MD_CONST.FONT_SIZE
-        }
-        fontWeight={block.type === 'heading' ? 'extra-bold' : 'normal'}
-        lineHeight={
-          block.type === 'heading'
-            ? MD_CONST.HEADING_SIZES[block.level as keyof typeof MD_CONST.HEADING_SIZES] * 1.6
-            : 28
-        }
-      >
-        {block.segments ? (
-          block.segments.map((segment, segIndex) => (
-            <Span
-              key={`${index}-${segIndex}`}
-              {...getTextStyle(segment.style , segment.href)}
-            >
-              {segment.text}
-            </Span>
-          ))
-        ) : (
-          block.content
-        )}
-      </Text>
+      <AutoLayout key={index} width="fill-parent" direction="vertical">
+        <Text
+          width="fill-parent"
+          fill={MD_CONST.COLOR.BLACK}
+          fontSize={
+            block.type === 'heading'
+              ? MD_CONST.HEADING_SIZES[block.level as keyof typeof MD_CONST.HEADING_SIZES]
+              : MD_CONST.FONT_SIZE
+          }
+          fontWeight={block.type === 'heading' ? 'extra-bold' : 'normal'}
+          lineHeight={
+            block.type === 'heading'
+              ? MD_CONST.HEADING_SIZES[block.level as keyof typeof MD_CONST.HEADING_SIZES] * 1.6
+              : 28
+          }
+        >
+          {block.segments ? (
+            block.segments.map((segment, segIndex) => (
+              <Span
+                key={`${index}-${segIndex}`}
+                {...getTextStyle(segment.style , segment.href)}
+              >
+                {segment.text}
+              </Span>
+            ))
+          ) : (
+            block.content
+          )}
+        </Text>
+      </AutoLayout>
     );
   }
 }

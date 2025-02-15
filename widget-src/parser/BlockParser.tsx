@@ -81,17 +81,13 @@ export class BlockParser {
       // 段落
       if (line.trim()) {
         const segments = InlineParser.parseInline(line);
-        if (!currentBlock || currentBlock.type !== 'paragraph') {
-          if (currentBlock) blocks.push(currentBlock);
-          currentBlock = {
-            type: 'paragraph',
-            content: InlineParser.cleanMarkdown(line),
-            segments,
-          };
-        } else {
-          currentBlock.segments?.push(...segments);
-          currentBlock.content += ' ' + InlineParser.cleanMarkdown(line);
-        }
+        // 每行都建立新的段落區塊
+        if (currentBlock) blocks.push(currentBlock);
+        currentBlock = {
+          type: 'paragraph',
+          content: InlineParser.cleanMarkdown(line),
+          segments,
+        };
         continue;
       }
     }

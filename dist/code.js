@@ -181,7 +181,7 @@
   // widget-src/parser/BlockParser.tsx
   var BlockParser = class {
     static parseBlock(markdown) {
-      var _a, _b;
+      var _a;
       const blocks = [];
       const lines = markdown.split("\n");
       let currentBlock = null;
@@ -251,18 +251,13 @@
         }
         if (line.trim()) {
           const segments = InlineParser.parseInline(line);
-          if (!currentBlock || currentBlock.type !== "paragraph") {
-            if (currentBlock)
-              blocks.push(currentBlock);
-            currentBlock = {
-              type: "paragraph",
-              content: InlineParser.cleanMarkdown(line),
-              segments
-            };
-          } else {
-            (_b = currentBlock.segments) == null ? void 0 : _b.push(...segments);
-            currentBlock.content += " " + InlineParser.cleanMarkdown(line);
-          }
+          if (currentBlock)
+            blocks.push(currentBlock);
+          currentBlock = {
+            type: "paragraph",
+            content: InlineParser.cleanMarkdown(line),
+            segments
+          };
           continue;
         }
       }
@@ -409,16 +404,19 @@
       return this.renderText(block, index);
     }
     static renderText(block, index) {
-      return /* @__PURE__ */ figma.widget.h(Text2, {
+      return /* @__PURE__ */ figma.widget.h(AutoLayout2, {
         key: index,
-        width: CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2,
+        width: "fill-parent",
+        direction: "vertical"
+      }, /* @__PURE__ */ figma.widget.h(Text2, {
+        width: "fill-parent",
         fill: MD_CONST.COLOR.BLACK,
         fontSize: block.type === "heading" ? MD_CONST.HEADING_SIZES[block.level] : MD_CONST.FONT_SIZE,
         fontWeight: block.type === "heading" ? "extra-bold" : "normal",
         lineHeight: block.type === "heading" ? MD_CONST.HEADING_SIZES[block.level] * 1.6 : 28
       }, block.segments ? block.segments.map((segment, segIndex) => /* @__PURE__ */ figma.widget.h(Span2, __spreadValues({
         key: `${index}-${segIndex}`
-      }, getTextStyle(segment.style, segment.href)), segment.text)) : block.content);
+      }, getTextStyle(segment.style, segment.href)), segment.text)) : block.content));
     }
   };
 
