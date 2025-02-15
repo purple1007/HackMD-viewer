@@ -2,7 +2,7 @@ const { widget } = figma
 const { AutoLayout, Input, Text, useSyncedState, usePropertyMenu, useEffect, useWidgetId } = widget
 
 import { MarkdownParser } from './MarkdownParser'
-import { CONTAINER_SIZE } from './constants/markdown'
+import { CONTAINER_SIZE, MD_CONST } from './constants/markdown'
 import { getHackMDId } from './utils/hackMDId'
 
 import { HackMDButton } from './components/hackMDButton'
@@ -68,7 +68,7 @@ function HackMDViewer() {
 
     if (error) {
       return (
-          <Text fill="#FF0000">{error}</Text>
+          <Text fill={MD_CONST.COLOR.ERROR}>{error}</Text>
       )
     }
 

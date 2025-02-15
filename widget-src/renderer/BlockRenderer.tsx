@@ -3,7 +3,7 @@ const { AutoLayout, Span, Text } = widget
 
 import { StyledBlock } from '../types/block';
 import { getTextStyle } from '../utils/styles';
-import { MARKDOWN_CONSTANTS, CONTAINER_SIZE } from '../constants/markdown';
+import { MD_CONST, CONTAINER_SIZE } from '../constants/markdown';
 import { ListRenderer } from './ListRenderer';
 
 export class BlockRenderer {
@@ -20,16 +20,16 @@ export class BlockRenderer {
       <Text
         key={index}
         width={CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2}
-        fill="#232323"
+        fill={MD_CONST.COLOR.BLACK}
         fontSize={
           block.type === 'heading'
-            ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level as keyof typeof MARKDOWN_CONSTANTS.HEADING_SIZES]
-            : MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE
+            ? MD_CONST.HEADING_SIZES[block.level as keyof typeof MD_CONST.HEADING_SIZES]
+            : MD_CONST.FONT_SIZE
         }
         fontWeight={block.type === 'heading' ? 'extra-bold' : 'normal'}
         lineHeight={
           block.type === 'heading'
-            ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level as keyof typeof MARKDOWN_CONSTANTS.HEADING_SIZES] * 1.6
+            ? MD_CONST.HEADING_SIZES[block.level as keyof typeof MD_CONST.HEADING_SIZES] * 1.6
             : 28
         }
       >

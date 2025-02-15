@@ -1,6 +1,8 @@
 
 const { widget } = figma;
 const { AutoLayout, Text, Frame, SVG, Line } = widget;
+
+import { MD_CONST } from '../constants/markdown';
 import { LinkIcon } from './icons';
 
 interface ContentLayoutProps {
@@ -48,7 +50,7 @@ export const ContentLayout = ({ children, url, lastSyncTime }: ContentLayoutProp
             height={18}
           >
             <SVG
-              name="Vector_Vector_Vector_Vector"
+              name="Link Icon"
               height={18}
               width={18}
               src={LinkIcon}
@@ -56,7 +58,7 @@ export const ContentLayout = ({ children, url, lastSyncTime }: ContentLayoutProp
           </Frame>
           <Text
             name="Link Text"
-            fill="#564DFF"
+            fill={MD_CONST.COLOR.PRIMARY}
             fontFamily="Inter"
             href={url}
           >
@@ -92,7 +94,7 @@ export const ContentLayout = ({ children, url, lastSyncTime }: ContentLayoutProp
           >
             <Text
               name="Sync Label"
-              fill="#ADADAD"
+              fill={MD_CONST.COLOR.GRAY}
               fontFamily="Inter"
               fontSize={14}
               fontWeight={500}
@@ -101,7 +103,7 @@ export const ContentLayout = ({ children, url, lastSyncTime }: ContentLayoutProp
             </Text>
             <Text
               name="Sync Date"
-              fill="#444"
+              fill={MD_CONST.COLOR.BLACK}
               fontFamily="Inter"
               fontSize={14}
               fontWeight={500}

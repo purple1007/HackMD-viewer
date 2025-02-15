@@ -2,6 +2,8 @@ const { widget } = figma;
 const { AutoLayout, Text, Frame, SVG } = widget;
 import { LinkIcon, LogoIcon, LogoWordMark } from './icons';
 
+import { MD_CONST } from '../constants/markdown';
+
 interface HackMDButtonProps {
   onSuccess: (url: string, noteId: string) => Promise<void>;
 }
@@ -114,8 +116,8 @@ export const HackMDButton = ({ onSuccess }: HackMDButtonProps) => {
       </AutoLayout>
 
       <AutoLayout
-        name="Frame 4"
-        fill="#564DFF"
+        name="Button"
+        fill={MD_CONST.COLOR.PRIMARY}
         cornerRadius={8}
         overflow="visible"
         spacing={5}

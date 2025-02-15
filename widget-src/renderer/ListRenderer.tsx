@@ -5,7 +5,7 @@ import { getTextStyle } from '../utils/styles';
 import { CheckIcon, UnCheckIcon, Dot } from '../components/icons';
 import { StyledBlock } from '../types/block';
 import { TextSegment } from '../types/text';
-import { CONTAINER_SIZE } from '../constants/markdown';
+import { CONTAINER_SIZE, MD_CONST } from '../constants/markdown';
 
 
 export class ListRenderer {
@@ -28,7 +28,7 @@ export class ListRenderer {
             padding={{ left: 6 }}
           >
             {item.ordered ? (
-              <Text fill="#232323" width={18}>{itemIndex + 1}.</Text>
+              <Text fill={MD_CONST.COLOR.BLACK} width={18}>{itemIndex + 1}.</Text>
             ) : (
               item.checkable ? 
                 <SVG src={item.checked ? CheckIcon : UnCheckIcon} /> : 

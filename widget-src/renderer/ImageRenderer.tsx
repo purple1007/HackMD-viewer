@@ -3,6 +3,8 @@ const { AutoLayout, Image, Text, Span, SVG } = widget
 import { ImageBroken } from '../components/icons'
 import { styledImage } from '../types/block'
 
+import { MD_CONST } from '../constants/markdown'
+
 export class ImageRenderer {
   static renderImage(block: styledImage, index: number) {
     // 檢查圖片 URL 是否有效
@@ -25,15 +27,14 @@ export class ImageRenderer {
     };
 
     if (!isValidUrl(block.src)) {
-      const RedText = '#CF7E7E';
       return (
         <AutoLayout key={index} padding={12} width={'fill-parent'} fill={'#F2E1E3'} direction='vertical' spacing={6} cornerRadius={4} >
           <SVG  src={ImageBroken} />
-          <Text fill={RedText}>
+          <Text fill={MD_CONST.COLOR.ERROR}>
             圖片網址無效
           </Text>
-          <Text fill={RedText}>圖片網址：<Span href={block.src} textDecoration='underline'>{block.src}</Span> </Text>
-          <Text fill={RedText}> 網址無效的原因，可能是 CORS 問題，請更換圖片網址。</Text>
+          <Text fill={MD_CONST.COLOR.ERROR}>圖片網址：<Span href={block.src} textDecoration='underline'>{block.src}</Span> </Text>
+          <Text fill={MD_CONST.COLOR.ERROR}> 網址無效的原因，可能是 CORS 問題，請更換圖片網址。</Text>
         </AutoLayout>
       );
     }

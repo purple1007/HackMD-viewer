@@ -274,7 +274,7 @@
   };
 
   // widget-src/constants/markdown.tsx
-  var MARKDOWN_CONSTANTS = {
+  var MD_CONST = {
     HEADING_SIZES: {
       1: 32,
       2: 24,
@@ -283,7 +283,14 @@
       5: 14,
       6: 12
     },
-    REGULAR_FONT_SIZE: 16
+    FONT_SIZE: 16,
+    COLOR: {
+      BLACK: "#232323",
+      PRIMARY: "#564DFF",
+      HIGHLIGHT: "#DFA424",
+      GRAY: "#ADADAD",
+      ERROR: "#FF0000"
+    }
   };
   var CONTAINER_SIZE = {
     WIDTH: 600,
@@ -295,10 +302,10 @@
     const textDecoration = href ? "underline" : (style == null ? void 0 : style.strikethrough) ? "strikethrough" : "none";
     return __spreadValues({
       fontWeight: (style == null ? void 0 : style.bold) ? "bold" : "normal",
-      fill: href ? "#0066CC" : (style == null ? void 0 : style.highlight) ? "#DFA424" : "#232323",
+      fill: href ? MD_CONST.COLOR.PRIMARY : (style == null ? void 0 : style.highlight) ? MD_CONST.COLOR.HIGHLIGHT : MD_CONST.COLOR.BLACK,
       italic: Boolean(style == null ? void 0 : style.italic),
       textDecoration,
-      fontSize: MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE
+      fontSize: MD_CONST.FONT_SIZE
     }, href && { href });
   };
 
@@ -376,7 +383,7 @@
           width: "fill-parent",
           padding: { left: 6 }
         }, item.ordered ? /* @__PURE__ */ figma.widget.h(Text, {
-          fill: "#232323",
+          fill: MD_CONST.COLOR.BLACK,
           width: 18
         }, itemIndex + 1, ".") : item.checkable ? /* @__PURE__ */ figma.widget.h(SVG, {
           src: item.checked ? CheckIcon : UnCheckIcon
@@ -405,10 +412,10 @@
       return /* @__PURE__ */ figma.widget.h(Text2, {
         key: index,
         width: CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2,
-        fill: "#232323",
-        fontSize: block.type === "heading" ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level] : MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE,
+        fill: MD_CONST.COLOR.BLACK,
+        fontSize: block.type === "heading" ? MD_CONST.HEADING_SIZES[block.level] : MD_CONST.FONT_SIZE,
         fontWeight: block.type === "heading" ? "extra-bold" : "normal",
-        lineHeight: block.type === "heading" ? MARKDOWN_CONSTANTS.HEADING_SIZES[block.level] * 1.6 : 28
+        lineHeight: block.type === "heading" ? MD_CONST.HEADING_SIZES[block.level] * 1.6 : 28
       }, block.segments ? block.segments.map((segment, segIndex) => /* @__PURE__ */ figma.widget.h(Span2, __spreadValues({
         key: `${index}-${segIndex}`
       }, getTextStyle(segment.style, segment.href)), segment.text)) : block.content);
@@ -430,7 +437,6 @@
         }
       };
       if (!isValidUrl(block.src)) {
-        const RedText = "#CF7E7E";
         return /* @__PURE__ */ figma.widget.h(AutoLayout3, {
           key: index,
           padding: 12,
@@ -442,14 +448,14 @@
         }, /* @__PURE__ */ figma.widget.h(SVG2, {
           src: ImageBroken
         }), /* @__PURE__ */ figma.widget.h(Text3, {
-          fill: RedText
+          fill: MD_CONST.COLOR.ERROR
         }, "\u5716\u7247\u7DB2\u5740\u7121\u6548"), /* @__PURE__ */ figma.widget.h(Text3, {
-          fill: RedText
+          fill: MD_CONST.COLOR.ERROR
         }, "\u5716\u7247\u7DB2\u5740\uFF1A", /* @__PURE__ */ figma.widget.h(Span3, {
           href: block.src,
           textDecoration: "underline"
         }, block.src), " "), /* @__PURE__ */ figma.widget.h(Text3, {
-          fill: RedText
+          fill: MD_CONST.COLOR.ERROR
         }, " \u7DB2\u5740\u7121\u6548\u7684\u539F\u56E0\uFF0C\u53EF\u80FD\u662F CORS \u554F\u984C\uFF0C\u8ACB\u66F4\u63DB\u5716\u7247\u7DB2\u5740\u3002"));
       }
       return /* @__PURE__ */ figma.widget.h(Image, {
@@ -589,8 +595,8 @@
       fontSize: 18,
       fontWeight: 500
     }, "Paste your HackMD note into Figma")), /* @__PURE__ */ figma.widget.h(AutoLayout4, {
-      name: "Frame 4",
-      fill: "#564DFF",
+      name: "Button",
+      fill: MD_CONST.COLOR.PRIMARY,
       cornerRadius: 8,
       overflow: "visible",
       spacing: 5,
@@ -663,13 +669,13 @@
       width: 18,
       height: 18
     }, /* @__PURE__ */ figma.widget.h(SVG4, {
-      name: "Vector_Vector_Vector_Vector",
+      name: "Link Icon",
       height: 18,
       width: 18,
       src: LinkIcon
     })), /* @__PURE__ */ figma.widget.h(Text5, {
       name: "Link Text",
-      fill: "#564DFF",
+      fill: MD_CONST.COLOR.PRIMARY,
       fontFamily: "Inter",
       href: url
     }, "View Original Note", " "))), /* @__PURE__ */ figma.widget.h(Line, {
@@ -699,13 +705,13 @@
       verticalAlignItems: "center"
     }, /* @__PURE__ */ figma.widget.h(Text5, {
       name: "Sync Label",
-      fill: "#ADADAD",
+      fill: MD_CONST.COLOR.GRAY,
       fontFamily: "Inter",
       fontSize: 14,
       fontWeight: 500
     }, "Last Synced:", " "), /* @__PURE__ */ figma.widget.h(Text5, {
       name: "Sync Date",
-      fill: "#444",
+      fill: MD_CONST.COLOR.BLACK,
       fontFamily: "Inter",
       fontSize: 14,
       fontWeight: 500
@@ -760,7 +766,7 @@
       }
       if (error) {
         return /* @__PURE__ */ figma.widget.h(Text6, {
-          fill: "#FF0000"
+          fill: MD_CONST.COLOR.ERROR
         }, error);
       }
       if (content) {

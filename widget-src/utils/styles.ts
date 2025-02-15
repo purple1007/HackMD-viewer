@@ -1,4 +1,4 @@
-import { MARKDOWN_CONSTANTS } from '../constants/markdown';
+import { MD_CONST } from '../constants/markdown';
 
 export interface TextStyle {
   bold?: boolean;
@@ -16,10 +16,10 @@ export const getTextStyle = (style?: TextStyle, href?: string) => {
 
   return {
     fontWeight: style?.bold ? 'bold' : 'normal',
-    fill: href ? '#0066CC' : style?.highlight ? '#DFA424' : '#232323',
+    fill: href ? MD_CONST.COLOR.PRIMARY : style?.highlight ? MD_CONST.COLOR.HIGHLIGHT : MD_CONST.COLOR.BLACK,
     italic: Boolean(style?.italic),
     textDecoration: textDecoration as 'none' | 'strikethrough' | 'underline',
-    fontSize: MARKDOWN_CONSTANTS.REGULAR_FONT_SIZE,
+    fontSize: MD_CONST.FONT_SIZE,
     ...(href && { href })
   };
 }
