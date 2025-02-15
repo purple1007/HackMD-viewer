@@ -1,23 +1,95 @@
 const { widget } = figma
-const { AutoLayout, Image, Text, Span, SVG } = widget
-import { ImageBroken } from '../components/icons'
+const { AutoLayout, Image, Text, Span, Frame, SVG } = widget
+import { WarningDiamond } from '../components/icons'
 import { styledImage } from '../types/block'
-
 import { MD_CONST } from '../constants/markdown'
 
 export class ImageRenderer {
+  static renderErrorMessage(src: string, index: number) {
+    return (
+      <AutoLayout
+          name="ImageErrorBlock"
+          key={index}
+          fill="#FFF3F4"
+          stroke="#FFDFDF"
+          cornerRadius={12}
+          overflow="visible"
+          direction="vertical"
+          spacing={6}
+          padding={{
+            vertical: 32,
+            horizontal: 24,
+          }}
+          width="fill-parent"
+          verticalAlignItems="center"
+    >
+      <Frame
+        name="Error-WarningDiamond"
+        width={24}  height={24}
+      >
+        <SVG
+          name="Vector"
+          x={{
+            type: "horizontal-scale",
+            leftOffsetPercent: 6.276,
+            rightOffsetPercent: 6.25,
+          }}
+          y={{
+            type: "vertical-scale",
+            topOffsetPercent: 6.253,
+            bottomOffsetPercent: 6.253,
+          }}
+          height={21}  width={21}
+          src={WarningDiamond}
+        />
+      </Frame>
+      <Text
+        name="Error Title"
+        fill={MD_CONST.COLOR.ERROR}
+        lineHeight={25}
+        fontFamily="Inter"
+        fontWeight={600}
+      >
+        圖片無法載入
+      </Text>
+      <AutoLayout
+        name="Error Message"
+        opacity={0.6}
+        direction="vertical"
+        spacing={1}
+        width="fill-parent"
+      >
+        <Text
+          name="Message"
+          fill={MD_CONST.COLOR.ERROR}
+          lineHeight={25}
+          fontWeight={500}
+        >
+          圖片網址: {src}
+        </Text>
+        <Text
+          name="Message"
+          fill={MD_CONST.COLOR.ERROR}
+          lineHeight={25} fontWeight={500}
+        >
+          可能是 CORS
+          問題或存取權限不足，請更換圖片網址。
+        </Text>
+      </AutoLayout>
+    </AutoLayout>
+    )
+  }
+
   static renderImage(block: styledImage, index: number) {
-    // 檢查圖片 URL 是否有效
     const isValidUrl = (url: string) => {
       try {
-        // 使用正規表達式來驗證 URL
         const urlPattern = new RegExp(
-          '^(https?:\\/\\/)?'+ // protocol
-          '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name
-          '((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
-          '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+ // port and path
-          '(\\?[;&a-z\\d%_.~+=-]*)?'+ // query string
-          '(\\#[-a-z\\d_]*)?$','i' // fragment locator
+          '^(https?:\\/\\/)?'+ 
+          '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+
+          '((\\d{1,3}\\.){3}\\d{1,3}))'+ 
+          '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+
+          '(\\?[;&a-z\\d%_.~+=-]*)?'+
+          '(\\#[-a-z\\d_]*)?$','i'
         );
         return urlPattern.test(url);
       } catch (e) {
@@ -25,31 +97,21 @@ export class ImageRenderer {
         return false;
       }
     };
-
+    
     if (!isValidUrl(block.src)) {
-      return (
-        <AutoLayout key={index} padding={12} width={'fill-parent'} fill={'#F2E1E3'} direction='vertical' spacing={6} cornerRadius={4} >
-          <SVG  src={ImageBroken} />
-          <Text fill={MD_CONST.COLOR.ERROR}>
-            圖片網址無效
-          </Text>
-          <Text fill={MD_CONST.COLOR.ERROR}>圖片網址：<Span href={block.src} textDecoration='underline'>{block.src}</Span> </Text>
-          <Text fill={MD_CONST.COLOR.ERROR}> 網址無效的原因，可能是 CORS 問題，請更換圖片網址。</Text>
-        </AutoLayout>
-      );
+      return this.renderErrorMessage(block.src, index);
     }
 
+
     return (
-      <Image
-        key={index}
-        src={block.src}
-        width='fill-parent'
-        height={300}
-        cornerRadius={6}
-        onError={() => {
-          console.error('Unable to load image:', block.src);
-        }}
-      />
+      <AutoLayout key={index} width="fill-parent">
+        <Image
+          src={block.src}
+          width='fill-parent'
+          height={300}
+          cornerRadius={6}
+        />
+      </AutoLayout>
     );
   }
 }

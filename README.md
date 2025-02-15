@@ -1,4 +1,16 @@
-# @figma/create-widget
+
+## About HackMD Viewer
+
+This Figma Plugin allows users to paste HackMD document URLs and render them directly within Figma. The code was developed with assistance from GitHub Copilot. If you have any suggestions for improving the code, please feel free to report them.
+
+### Current Technical Limitations
+
+- Images in HackMD cannot be rendered currently (due to CORS issues)
+- The HackMD note's visibility must be set to either "anyone with the link" or "published"
+- API integration is not yet supported
+
+
+## @figma/create-widget
 
 This repo was created by @figma/create-widget
 
