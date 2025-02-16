@@ -1,11 +1,9 @@
-
 ## About HackMD Viewer
 
 ![Cover](/assets/HackMD_Viewer_cover.png)
 
-
-This Figma Plugin allows users to paste HackMD document URLs and render them directly within Figma. 
-The code was developed with assistance from GitHub Copilot. 
+This Figma Plugin allows users to paste HackMD document URLs and render them directly within Figma.
+The code was developed with assistance from GitHub Copilot.
 If you have any suggestions for improving the code, please feel free to report them.
 
 ### ⚠️ Current Technical Limitations
@@ -15,7 +13,6 @@ If you have any suggestions for improving the code, please feel free to report t
 - API integration is not yet supported
 - 🚧 Some markdown content does not yet have examples:
   - alert block, code block, qoute block, table, spoiler block
-
 
 ## @figma/create-widget
 

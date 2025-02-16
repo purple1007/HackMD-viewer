@@ -11,7 +11,7 @@ p {
 }
 
 .input,
-input[type='text'] {
+input[type="text"] {
   border: 1px solid #dddd;
   padding: 8px 10px;
   border-radius: 4px;
@@ -37,4 +37,3 @@ button:hover {
   padding: 0px;
   text-align: left;
 }
-

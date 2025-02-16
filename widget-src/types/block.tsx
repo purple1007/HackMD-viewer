@@ -1,9 +1,9 @@
 // src/types/block.ts
 
-import { TextSegment } from './text';
+import { TextSegment } from "./text";
 
 export interface styledImage {
-  type: 'image';
+  type: "image";
   src: string;
 }
 
@@ -28,4 +28,3 @@ export interface ListItem {
   ordered?: boolean;
   number?: number;
 }
-

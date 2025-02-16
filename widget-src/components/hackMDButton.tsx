@@ -1,8 +1,8 @@
 const { widget } = figma;
 const { AutoLayout, Text, Frame, SVG } = widget;
-import { LinkIcon, LogoIcon, LogoWordMark } from './icons';
+import { LinkIcon, LogoIcon, LogoWordMark } from "./icons";
 
-import { MD_CONST } from '../constants/markdown';
+import { MD_CONST } from "../constants/markdown";
 
 interface HackMDButtonProps {
   onSuccess: (url: string, noteId: string) => Promise<void>;
@@ -119,7 +119,7 @@ export const HackMDButton = ({ onSuccess }: HackMDButtonProps) => {
         name="Button"
         fill={MD_CONST.COLOR.PRIMARY}
         hoverStyle={{
-          fill: '#625aff',
+          fill: "#625aff",
         }}
         cornerRadius={8}
         overflow="visible"
@@ -133,13 +133,13 @@ export const HackMDButton = ({ onSuccess }: HackMDButtonProps) => {
         verticalAlignItems="center"
         onClick={() => {
           return new Promise((resolve) => {
-            figma.showUI(__html__, { 
-              width: 280, 
-              height: 200, 
-              title: "HackMD URL setting" 
+            figma.showUI(__html__, {
+              width: 280,
+              height: 200,
+              title: "HackMD URL setting",
             });
             figma.ui.onmessage = async (msg) => {
-              if (msg.type === 'url' && msg.value) {
+              if (msg.type === "url" && msg.value) {
                 await onSuccess(msg.value, msg.noteId);
                 resolve();
               }

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "./App.css";
-import { getHackMDId } from '../widget-src/utils/hackMDId'
+import { getHackMDId } from "../widget-src/utils/hackMDId";
 
 function App() {
   const [error, setError] = useState("");
@@ -13,24 +13,22 @@ function App() {
 
       if (window.parent) {
         window.parent.postMessage(
-          { 
-            pluginMessage: { 
-              type: 'url', 
+          {
+            pluginMessage: {
+              type: "url",
               value: url,
-              noteId: noteId 
-            } 
+              noteId: noteId,
+            },
           },
-          '*'
+          "*"
         );
       }
-
-
-    } catch  (err: unknown) {
+    } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('發生未知錯誤');
-      } 
+        setError("發生未知錯誤");
+      }
     }
   };
 
@@ -44,7 +42,11 @@ function App() {
         value={url}
         onChange={(e) => setUrl(e.target.value)}
       />
-      {error && <div className="error"><p>{error}</p></div>}
+      {error && (
+        <div className="error">
+          <p>{error}</p>
+        </div>
+      )}
       <button className="button" onClick={handleSubmit}>
         Get started
       </button>
