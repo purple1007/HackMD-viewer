@@ -29,6 +29,7 @@ export class MarkdownParser {
   static renderMarkdownAsTree(markdown: string): JSX.Element {
     const md = new MarkdownIt();
     const tokens = md.parse(markdown, {});
+    console.log('markdown-it tokens', tokens);
     const treeResult = this.tokenToTree(tokens, 0);
     return <AutoLayout direction="vertical">{treeResult.element}</AutoLayout>;
   }
@@ -46,6 +47,8 @@ export class MarkdownParser {
       case "h3":
       case "h4":
       case "h5":
+        return <AutoLayout key={index}>{children}</AutoLayout>;
+      case "p":
         return <AutoLayout key={index}>{children}</AutoLayout>;
       default:
         return <Text key={index}>Component {componentType} not supported</Text>;
@@ -71,11 +74,72 @@ export class MarkdownParser {
           MarkdownParser.renderComponent(componentType, index, children)
         );
       } else if (token.type === "inline") {
-        elems.push(<Text key={index}>{token.content}</Text>);
+        const { element } = MarkdownParser.inlineTokenToTree(token.children, 0);
+        elems.push(<AutoLayout key={index}>{element}</AutoLayout>);
         index++;
       } else {
         elems.push(MarkdownParser.renderComponent(token.type, index, []));
         index++;
+      }
+    }
+    return { element: elems, newIndex: index };
+  }
+
+  static renderInlineComponent(tokens: any[], index: number = 0): { element: JSX.Element[]; newIndex: number } {
+    const elems: JSX.Element[] = [];
+    while (index < tokens.length) {
+      const token = tokens[index];
+      if (token.type.endsWith("_close")) {
+        return { element: elems, newIndex: index + 1 };
+      } else if (token.type.endsWith("_open")) {
+        const result = MarkdownParser.renderInlineComponent(tokens, index + 1);
+        elems.push(
+          <Text key={index}>
+            {result.element}
+          </Text>
+        );
+        index = result.newIndex;
+      } else if (token.type === "text") {
+        elems.push(<Text key={index}>{token.content}</Text>);
+        index++;
+      } else {
+        elems.push(<Text key={index}>{token.content || ""}</Text>);
+        index++;
+      }
+    }
+    return { element: elems, newIndex: index };
+  }
+
+  static inlineTokenToTree(tokens: any[], index: number = 0): { element: JSX.Element[]; newIndex: number } {
+    const elems: JSX.Element[] = [];
+    while (index < tokens.length) {
+      const token = tokens[index];
+      switch (token.type) {
+        case "text":
+          elems.push(<Text key={index}>{token.content}</Text>);
+          index++;
+          break;
+        case "em_open":
+          {
+            const result = MarkdownParser.inlineTokenToTree(tokens, index + 1);
+            elems.push(<Text key={index}>{result.element}</Text>);
+            index = result.newIndex;
+          }
+          break;
+        case "em_close":
+          return { element: elems, newIndex: index + 1 };
+        default:
+          if (token.type.endsWith("_open")) {
+            const result = MarkdownParser.inlineTokenToTree(tokens, index + 1);
+            elems.push(<Text key={index}>{result.element}</Text>);
+            index = result.newIndex;
+          } else if (token.type.endsWith("_close")) {
+            return { element: elems, newIndex: index + 1 };
+          } else {
+            elems.push(<Text key={index}>{token.content || ""}</Text>);
+            index++;
+          }
+          break;
       }
     }
     return { element: elems, newIndex: index };
