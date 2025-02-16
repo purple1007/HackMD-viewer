@@ -15,7 +15,7 @@ export default defineConfig({
     brotliSize: false,
     outDir: "../dist",
     rollupOptions: {
-      inlineDynamicImports: true
+      inlineDynamicImports: true,
     },
   },
 });

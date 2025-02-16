@@ -1,12 +1,11 @@
-const { widget } = figma
-const { AutoLayout, Span, Text, SVG } = widget
-import { getTextStyle } from '../utils/styles';
+const { widget } = figma;
+const { AutoLayout, Span, Text, SVG } = widget;
+import { getTextStyle } from "../utils/styles";
 
-import { CheckIcon, UnCheckIcon, Dot } from '../components/icons';
-import { StyledBlock } from '../types/block';
-import { TextSegment } from '../types/text';
-import { CONTAINER_SIZE, MD_CONST } from '../constants/markdown';
-
+import { CheckIcon, UnCheckIcon, Dot } from "../components/icons";
+import { StyledBlock } from "../types/block";
+import { TextSegment } from "../types/text";
+import { CONTAINER_SIZE, MD_CONST } from "../constants/markdown";
 
 export class ListRenderer {
   static renderList(block: StyledBlock, index: number) {
@@ -28,16 +27,20 @@ export class ListRenderer {
             padding={{ left: 6 }}
           >
             {item.ordered ? (
-              <Text fill={MD_CONST.COLOR.BLACK} width={18}>{itemIndex + 1}.</Text>
+              <Text fill={MD_CONST.COLOR.BLACK} width={18}>
+                {itemIndex + 1}.
+              </Text>
+            ) : item.checkable ? (
+              <SVG src={item.checked ? CheckIcon : UnCheckIcon} />
             ) : (
-              item.checkable ? 
-                <SVG src={item.checked ? CheckIcon : UnCheckIcon} /> : 
-                <SVG src={Dot} />
+              <SVG src={Dot} />
             )}
             <Text width="fill-parent">
               {item.segments?.map((segment, segIndex) => (
-                <Span key={segIndex} 
-                  {...getTextStyle(segment.style , segment.href)} >
+                <Span
+                  key={segIndex}
+                  {...getTextStyle(segment.style, segment.href)}
+                >
                   {segment.text}
                 </Span>
               ))}
