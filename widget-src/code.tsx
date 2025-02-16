@@ -76,6 +76,8 @@ function HackMDViewer() {
     }
 
     if (content) {
+      return MarkdownParser.renderMarkdownAsTree(content);
+
       const blocks = MarkdownParser.parseBlock(content);
       console.log("URL:", url);
       console.log("Parsed blocks:", blocks);
