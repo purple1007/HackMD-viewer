@@ -14,6 +14,7 @@ export class TextRenderer {
             fill={MD_CONST.COLOR.BLACK}
             fontSize={MD_CONST.FONT_SIZE}
             width="hug-content"
+            lineHeight={24}
           >
             <Span {...getTextStyle(segment.style, segment.href)}>
               {segment.text}

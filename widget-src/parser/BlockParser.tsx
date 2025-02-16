@@ -2,6 +2,13 @@ import { StyledBlock } from "../types/block";
 import { InlineParser } from "./InlineParser";
 
 export class BlockParser {
+
+  // 新增計算縮排層級的輔助函數
+  static getIndentationLevel(line: string): number {
+    const spaces = line.match(/^\s*/)?.[0].length || 0;
+    return Math.floor(spaces / 4); // 每 4 個空格算一層縮排
+  }
+
   static parseBlock(markdown: string): StyledBlock[] {
     const blocks: StyledBlock[] = [];
     const lines = markdown.split("\n");
@@ -43,10 +50,10 @@ export class BlockParser {
       }
 
       // 列表處理
-      const orderedListRegex = /^(\d+)\.\s+(.+)/;
-      const uncheckedRegex = /^(?:[*-]\s*)?\[\s\]\s*(.*)$/;
-      const checkedRegex = /^(?:[*-]\s*)?\[x\]\s*(.*)$/i;
-      const listRegex = /^[-*]\s+(.+)/;
+      const orderedListRegex = /^(\s*)(\d+)\.\s+(.+)/;
+      const uncheckedRegex = /^(\s*)[-*]\s*\[\s\]\s*(.+)$/;
+      const checkedRegex = /^(\s*)[-*]\s*\[x\]\s*(.+)$/i;
+      const listRegex = /^(\s*)[-*]\s+(.+)/;
 
       const orderedListMatch = line.match(orderedListRegex);
       const uncheckedMatch = line.match(uncheckedRegex);
@@ -58,7 +65,21 @@ export class BlockParser {
           orderedListMatch || checkedMatch || uncheckedMatch || listMatch;
         if (!match) continue;
 
-        const content = orderedListMatch ? match[2] : match[1];
+        const indentSpaces = match[1] || '';
+        const indentLevel = BlockParser.getIndentationLevel(line);
+        
+        // 取得內容
+        let content;
+        if (orderedListMatch) {
+          content = orderedListMatch[3];
+        } else if (checkedMatch) {
+          content = checkedMatch[2];
+        } else if (uncheckedMatch) {
+          content = uncheckedMatch[2];
+        } else if (listMatch) {
+          content = listMatch[2];
+        }
+
         const segments = InlineParser.parseInline(content);
 
         const listItem = {
@@ -67,15 +88,18 @@ export class BlockParser {
           checkable: Boolean(checkedMatch || uncheckedMatch),
           checked: Boolean(checkedMatch),
           ordered: Boolean(orderedListMatch),
-          number: orderedListMatch ? parseInt(match[1]) : undefined,
+          number: orderedListMatch ? parseInt(orderedListMatch[2]) : undefined,
+          level: indentLevel, // 新增縮排層級
         };
 
-        if (!currentBlock || currentBlock.type !== "list") {
+        if (!currentBlock || currentBlock.type !== "list" || 
+          (currentBlock.type === "list" && currentBlock.level !== indentLevel)) {
           if (currentBlock) blocks.push(currentBlock);
           currentBlock = {
             type: "list",
             content: "",
             items: [listItem],
+            level: indentLevel, // 新增縮排層級
           };
         } else {
           currentBlock.items?.push(listItem);

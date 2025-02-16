@@ -27,6 +27,8 @@ export const getTextStyle = (style?: TextStyle, href?: string) => {
     italic: Boolean(style?.italic),
     textDecoration: textDecoration as "none" | "strikethrough" | "underline",
     fontSize: MD_CONST.FONT_SIZE,
+    lineHeight: 26,
+    letterSpacing: style?.code ? 0 : "3%",
     fontFamily: style?.code ? "JetBrains Mono" : "Inter",
     ...(href && { href }),
   };
