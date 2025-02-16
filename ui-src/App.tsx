@@ -46,7 +46,7 @@ function App() {
       />
       {error && <div className="error"><p>{error}</p></div>}
       <button className="button" onClick={handleSubmit}>
-        Save
+        Get started
       </button>
     </div>
   );

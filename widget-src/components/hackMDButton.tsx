@@ -118,6 +118,9 @@ export const HackMDButton = ({ onSuccess }: HackMDButtonProps) => {
       <AutoLayout
         name="Button"
         fill={MD_CONST.COLOR.PRIMARY}
+        hoverStyle={{
+          fill: '#625aff',
+        }}
         cornerRadius={8}
         overflow="visible"
         spacing={5}
@@ -128,6 +131,21 @@ export const HackMDButton = ({ onSuccess }: HackMDButtonProps) => {
         width="fill-parent"
         horizontalAlignItems="center"
         verticalAlignItems="center"
+        onClick={() => {
+          return new Promise((resolve) => {
+            figma.showUI(__html__, { 
+              width: 280, 
+              height: 200, 
+              title: "HackMD URL setting" 
+            });
+            figma.ui.onmessage = async (msg) => {
+              if (msg.type === 'url' && msg.value) {
+                await onSuccess(msg.value, msg.noteId);
+                resolve();
+              }
+            };
+          });
+        }}
       >
         <Text
           name="Get started"
@@ -135,21 +153,6 @@ export const HackMDButton = ({ onSuccess }: HackMDButtonProps) => {
           fontFamily="Inter"
           fontSize={20}
           fontWeight={500}
-          onClick={() => {
-            return new Promise((resolve) => {
-              figma.showUI(__html__, { 
-                width: 280, 
-                height: 200, 
-                title: "HackMD URL setting" 
-              });
-              figma.ui.onmessage = async (msg) => {
-                if (msg.type === 'url' && msg.value) {
-                  await onSuccess(msg.value, msg.noteId);
-                  resolve();
-                }
-              };
-            });
-          }}
         >
           Get started
         </Text>
