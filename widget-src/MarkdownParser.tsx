@@ -122,7 +122,7 @@ export class MarkdownParser {
         case "em_open":
           {
             const result = MarkdownParser.inlineTokenToTree(tokens, index + 1);
-            elems.push(<Text key={index}>{result.element}</Text>);
+            elems.push(<AutoLayout key={index}>{result.element}</AutoLayout>);
             index = result.newIndex;
           }
           break;
@@ -131,7 +131,7 @@ export class MarkdownParser {
         default:
           if (token.type.endsWith("_open")) {
             const result = MarkdownParser.inlineTokenToTree(tokens, index + 1);
-            elems.push(<Text key={index}>{result.element}</Text>);
+            elems.push(<AutoLayout key={index}>{result.element}</AutoLayout>);
             index = result.newIndex;
           } else if (token.type.endsWith("_close")) {
             return { element: elems, newIndex: index + 1 };
