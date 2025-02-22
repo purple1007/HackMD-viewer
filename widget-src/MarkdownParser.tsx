@@ -9,6 +9,7 @@ import { BlockParser } from "./parser/BlockParser";
 import { BlockRenderer } from "./renderer/BlockRenderer";
 import { ListRenderer } from "./renderer/ListRenderer";
 import { ImageRenderer } from "./renderer/ImageRenderer";
+import { getTextStyle, TextStyle } from "./utils/styles";
 
 export class MarkdownParser {
   static parseBlock(markdown: string): StyledBlock[] {
@@ -110,24 +111,46 @@ export class MarkdownParser {
     return { element: elems, newIndex: index };
   }
 
-  static inlineTokenToTree(tokens: any[], index: number = 0): { element: JSX.Element[]; newIndex: number } {
+  static inlineTokenToTree(tokens: any[], index: number = 0, style = {}): { element: JSX.Element[]; newIndex: number, style: TextStyle } {
     const elems: JSX.Element[] = [];
     while (index < tokens.length) {
       const token = tokens[index];
+      console.log(token.type, 'token.type')
       switch (token.type) {
+        case "softbreak":
+          {
+            elems.push(<Text key={index}>{' '}</Text>);
+            index++;
+          }
         case "text":
-          elems.push(<Text key={index}>{token.content}</Text>);
+          if (!Object.keys(style).length) {
+            elems.push(<Text key={index}>{token.content}</Text>);
+          } else {
+            elems.push(<Span key={index} {...getTextStyle(style)}>{token.content}</Span>);
+          }
           index++;
           break;
         case "em_open":
           {
-            const result = MarkdownParser.inlineTokenToTree(tokens, index + 1);
-            elems.push(<AutoLayout key={index}>{result.element}</AutoLayout>);
+            const result = MarkdownParser.inlineTokenToTree(tokens, index + 1, { ...style, italic: true });
+            elems.push(<Text key={index}>{result.element}</Text>);
             index = result.newIndex;
           }
           break;
-        case "em_close":
-          return { element: elems, newIndex: index + 1 };
+        case "strong_open":
+          {
+            const result = MarkdownParser.inlineTokenToTree(tokens, index + 1, { ...style, bold: true });
+            elems.push(<Text key={index}>{result.element}</Text>);
+            index = result.newIndex;
+          }
+          break;
+        case "s_open":
+          {
+            const result = MarkdownParser.inlineTokenToTree(tokens, index + 1, { ...style, strikethrough: true });
+            elems.push(<Text key={index}>{result.element}</Text>);
+            index = result.newIndex;
+          }
+          break;
         default:
           if (token.type.endsWith("_open")) {
             const result = MarkdownParser.inlineTokenToTree(tokens, index + 1);
