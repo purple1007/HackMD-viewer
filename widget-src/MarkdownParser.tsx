@@ -93,7 +93,7 @@ export class MarkdownParser {
     level: number = 0
   ): { element: JSX.Element[]; newIndex: number } {
     const elems: JSX.Element[] = [];
-    console.log('inline-tokens', tokens)
+    console.log('inline-tokens', tokens.map(token => token.type))
     while (index < tokens.length) {
       const token = tokens[index];
       switch (token.type) {
@@ -175,6 +175,14 @@ export class MarkdownParser {
             index = result.newIndex;
           }
           break;
+        case "code_inline":
+          if (level === 0) {
+            elems.push(<Text key={index} {...getTextStyle({ code: true })}>{token.content}</Text>);
+          } else {
+            elems.push(<Span key={index} {...getTextStyle({ ...style, code: true })}>{token.content}</Span>);
+          }
+          index++;
+          break;
         default:
           if (token.type.endsWith("_close")) {
             return { element: elems, newIndex: index + 1 };
@@ -187,6 +195,7 @@ export class MarkdownParser {
             }
             index = result.newIndex;
           } else {
+            console.log('unhandle inline token', token.type)
             if (level === 0) {
               elems.push(<Text key={index}>{token.content || ""}</Text>);
             } else {
