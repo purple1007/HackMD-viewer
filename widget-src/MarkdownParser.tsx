@@ -30,9 +30,9 @@ export class MarkdownParser {
   static renderMarkdownAsTree(markdown: string): JSX.Element {
     const md = new MarkdownIt();
     const tokens = md.parse(markdown, {});
-    console.log('markdown-it tokens', tokens);
+    // console.log('markdown-it tokens', tokens);
     const treeResult = this.tokenToTree(tokens, 0);
-    return <AutoLayout direction="vertical">{treeResult.element}</AutoLayout>;
+    return <AutoLayout direction="vertical" width="fill-parent">{treeResult.element}</AutoLayout>;
   }
 
   static renderComponent(
@@ -48,9 +48,9 @@ export class MarkdownParser {
       case "h3":
       case "h4":
       case "h5":
-        return <AutoLayout key={index}>{children}</AutoLayout>;
+        return <AutoLayout width="fill-parent" key={index}>{children}</AutoLayout>;
       case "p":
-        return <AutoLayout key={index}>{children}</AutoLayout>;
+        return <AutoLayout width="fill-parent" key={index} wrap>{children}</AutoLayout>;
       default:
         return <Text key={index}>Component {componentType} not supported</Text>;
     }
@@ -76,7 +76,7 @@ export class MarkdownParser {
         );
       } else if (token.type === "inline") {
         const { element } = MarkdownParser.inlineTokenToTree(token.children, 0);
-        elems.push(<AutoLayout key={index}>{element}</AutoLayout>);
+        elems.push(<AutoLayout key={index} width="fill-parent">{element}</AutoLayout>);
         index++;
       } else {
         elems.push(MarkdownParser.renderComponent(token.type, index, []));
@@ -111,22 +111,22 @@ export class MarkdownParser {
     return { element: elems, newIndex: index };
   }
 
-  static inlineTokenToTree(tokens: any[], index: number = 0, style = {}): { element: JSX.Element[]; newIndex: number, style: TextStyle } {
+  static inlineTokenToTree(tokens: any[], index: number = 0, style = {}, level = 0: { element: JSX.Element[]; newIndex: number, style: TextStyle, level: number } {
     const elems: JSX.Element[] = [];
     while (index < tokens.length) {
       const token = tokens[index];
-      console.log(token.type, 'token.type')
+      console.log(token.type, 'tokentype')
       switch (token.type) {
         case "softbreak":
           {
-            elems.push(<Text key={index}>{' '}</Text>);
+            elems.push(<Text key={index}>{'\n'}</Text>);
             index++;
           }
         case "text":
           if (!Object.keys(style).length) {
             elems.push(<Text key={index}>{token.content}</Text>);
           } else {
-            elems.push(<Span key={index} {...getTextStyle(style)}>{token.content}</Span>);
+            elems.push(<Span key={index} {...getTextStyle(style, style.href)}>{token.content}</Span>);
           }
           index++;
           break;
