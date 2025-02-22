@@ -6,6 +6,7 @@ export interface TextStyle {
   highlight?: boolean;
   italic?: boolean;
   strikethrough?: boolean;
+  href?: string;
 }
 
 export const getTextStyle = (style?: TextStyle, href?: string) => {
@@ -14,6 +15,8 @@ export const getTextStyle = (style?: TextStyle, href?: string) => {
     : style?.strikethrough
     ? "strikethrough"
     : "none";
+
+  const validHref = href && (href.startsWith('http://') || href.startsWith('https://'))
 
   return {
     fontWeight: style?.bold ? "bold" : "normal",
@@ -28,6 +31,6 @@ export const getTextStyle = (style?: TextStyle, href?: string) => {
     textDecoration: textDecoration as "none" | "strikethrough" | "underline",
     fontSize: MD_CONST.FONT_SIZE,
     fontFamily: style?.code ? "JetBrains Mono" : "Inter",
-    ...(href && { href }),
+    ...(validHref ? { href } : {}),
   };
 };

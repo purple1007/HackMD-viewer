@@ -76,7 +76,7 @@ export class MarkdownParser {
         );
       } else if (token.type === "inline") {
         const { element } = MarkdownParser.inlineTokenToTree(token.children, 0);
-        elems.push(<AutoLayout key={index} width="fill-parent">{element}</AutoLayout>);
+        elems.push(<AutoLayout key={index} width="fill-parent" spacing={2} wrap>{element}</AutoLayout>);
         index++;
       } else {
         elems.push(MarkdownParser.renderComponent(token.type, index, []));
@@ -93,6 +93,7 @@ export class MarkdownParser {
     level: number = 0
   ): { element: JSX.Element[]; newIndex: number } {
     const elems: JSX.Element[] = [];
+    console.log('inline-tokens', tokens)
     while (index < tokens.length) {
       const token = tokens[index];
       switch (token.type) {
@@ -104,7 +105,7 @@ export class MarkdownParser {
           if (level === 0) {
             elems.push(<Text key={index}>{token.content}</Text>);
           } else {
-            elems.push(<Span key={index} {...getTextStyle(style)}>{token.content}</Span>);
+            elems.push(<Span key={index} {...getTextStyle(style, style.href)}>{token.content}</Span>);
           }
           index++;
           break;
@@ -156,6 +157,24 @@ export class MarkdownParser {
             index = result.newIndex;
           }
           break;
+        case "link_open":
+          {
+            const hrefAttr = token.attrs?.find(([attr]) => attr === 'href');
+            const href = hrefAttr?.[1] || '';
+            const result = MarkdownParser.inlineTokenToTree(
+              tokens,
+              index + 1,
+              { ...style, href },
+              level + 1
+            );
+            if (level === 0) {
+              elems.push(<Text key={index}>{result.element}</Text>);
+            } else {
+              elems.push(...result.element);
+            }
+            index = result.newIndex;
+          }
+          break;
         default:
           if (token.type.endsWith("_close")) {
             return { element: elems, newIndex: index + 1 };
@@ -171,7 +190,7 @@ export class MarkdownParser {
             if (level === 0) {
               elems.push(<Text key={index}>{token.content || ""}</Text>);
             } else {
-              elems.push(<Span key={index} {...getTextStyle(style)}>{token.content || ""}</Span>);
+              elems.push(<Span key={index} {...getTextStyle(style, style.href)}>{token.content || ""}</Span>);
             }
             index++;
           }
