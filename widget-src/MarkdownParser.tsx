@@ -1,5 +1,5 @@
 const { widget } = figma;
-const { AutoLayout, Span, Text } = widget;
+const { AutoLayout, Span, Text, Image } = widget;
 
 import { TextSegment } from "./types/text";
 import { StyledBlock, styledImage } from "./types/block";
@@ -28,17 +28,81 @@ export class MarkdownParser {
 
   // New function: Convert markdown-it tokens to a React-like tree and render them.
   static renderMarkdownAsTree(markdown: string): JSX.Element {
-    const md = new MarkdownIt();
+    const md = new MarkdownIt('default', {
+      html: true,
+      breaks: true,
+      linkify: true,
+      typographer: false,
+    });
+
     const tokens = md.parse(markdown, {});
-    // console.log('markdown-it tokens', tokens);
-    const treeResult = this.tokenToTree(tokens, 0);
+
+    // Process tokens to handle images at block level
+    const processedTokens = tokens.reduce((acc: any[], token: any, index: number) => {
+      if (token.type === 'inline' && token.children) {
+        // Find all image indices in children
+        const imageIndices = token.children
+          .map((t: any, i: number) => t.type === 'image' ? i : -1)
+          .filter((i: number) => i !== -1);
+
+        if (imageIndices.length === 0) {
+          // No images, just add the token as is
+          acc.push(token);
+        } else {
+          // Split the children around images
+          let lastIndex = 0;
+          imageIndices.forEach((imgIndex: number) => {
+            // Add text before image if exists
+            const beforeImage = token.children.slice(lastIndex, imgIndex);
+            if (beforeImage.length > 0) {
+              acc.push({
+                ...token,
+                children: beforeImage
+              });
+            }
+
+            // Close paragraph before image
+            if (tokens[index - 1]?.type === 'paragraph_open') {
+              acc.push({ type: 'paragraph_close' });
+            }
+
+            // Add the image token
+            acc.push(token.children[imgIndex]);
+
+            // Open new paragraph after image
+            if (tokens[index + 1]?.type === 'paragraph_close') {
+              acc.push({ type: 'paragraph_open' });
+            }
+
+            lastIndex = imgIndex + 1;
+          });
+
+          // Add remaining text after last image if exists
+          const afterLastImage = token.children.slice(lastIndex);
+          if (afterLastImage.length > 0) {
+            acc.push({
+              ...token,
+              children: afterLastImage
+            });
+          }
+        }
+      } else {
+        acc.push(token);
+      }
+      return acc;
+    }, []);
+
+    console.log(processedTokens, 'processedTokens')
+
+    const treeResult = this.tokenToTree(processedTokens, 0);
     return <AutoLayout direction="vertical" width="fill-parent">{treeResult.element}</AutoLayout>;
   }
 
   static renderComponent(
     componentType: string,
     index: number,
-    children: JSX.Element[]
+    children: JSX.Element[],
+    token?: any
   ): JSX.Element {
     switch (componentType) {
       case "Text":
@@ -50,9 +114,16 @@ export class MarkdownParser {
       case "h5":
         return <AutoLayout width="fill-parent" key={index}>{children}</AutoLayout>;
       case "p":
-        return <AutoLayout width="fill-parent" key={index} wrap>{children}</AutoLayout>;
+        return <AutoLayout width="fill-parent" key={index} spacing={2} wrap>{children}</AutoLayout>;
+      case "image":
+        const srcAttr = token?.attrs?.find(([attr]: [string, string]) => attr === 'src');
+        const src = srcAttr?.[1] || '';
+        return ImageRenderer.renderImage({
+          type: 'image',
+          src,
+        }, index)
       default:
-        return <Text key={index}>Component {componentType} not supported</Text>;
+        return <Text key={index}>Component {JSON.stringify(componentType)} not supported</Text>;
     }
   }
 
@@ -72,14 +143,14 @@ export class MarkdownParser {
         const children = result.element;
         index = result.newIndex;
         elems.push(
-          MarkdownParser.renderComponent(componentType, index, children)
+          MarkdownParser.renderComponent(componentType, index, children, token)
         );
       } else if (token.type === "inline") {
         const { element } = MarkdownParser.inlineTokenToTree(token.children, 0);
-        elems.push(<AutoLayout key={index} width="fill-parent" spacing={2} wrap>{element}</AutoLayout>);
+        elems.push(element);
         index++;
       } else {
-        elems.push(MarkdownParser.renderComponent(token.type, index, []));
+        elems.push(MarkdownParser.renderComponent(token.type, index, [], token));
         index++;
       }
     }
@@ -93,7 +164,7 @@ export class MarkdownParser {
     level: number = 0
   ): { element: JSX.Element[]; newIndex: number } {
     const elems: JSX.Element[] = [];
-    console.log('inline-tokens', tokens.map(token => token.type))
+    // console.log('inline-tokens', tokens.map(token => token.type))
     while (index < tokens.length) {
       const token = tokens[index];
       switch (token.type) {

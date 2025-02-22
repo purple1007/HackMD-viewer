@@ -97,7 +97,7 @@ export class ImageRenderer {
       }
     };
 
-    if (!isValidUrl(block.src)) {
+    if (block.src && !isValidUrl(block.src)) {
       return this.renderErrorMessage(block.src, index);
     }
 
@@ -105,6 +105,12 @@ export class ImageRenderer {
       <AutoLayout key={index} width="fill-parent">
         <Image
           src={block.src}
+          // src={{
+          //   type: 'image',
+          //   src: block.src,
+          //   scaleMode: 'fit',
+          //   opacity: 0.7,
+          // }}
           width="fill-parent"
           height={300}
           cornerRadius={6}
