@@ -86,31 +86,6 @@ export class MarkdownParser {
     return { element: elems, newIndex: index };
   }
 
-  static renderInlineComponent(tokens: any[], index: number = 0): { element: JSX.Element[]; newIndex: number } {
-    const elems: JSX.Element[] = [];
-    while (index < tokens.length) {
-      const token = tokens[index];
-      if (token.type.endsWith("_close")) {
-        return { element: elems, newIndex: index + 1 };
-      } else if (token.type.endsWith("_open")) {
-        const result = MarkdownParser.renderInlineComponent(tokens, index + 1);
-        elems.push(
-          <Text key={index}>
-            {result.element}
-          </Text>
-        );
-        index = result.newIndex;
-      } else if (token.type === "text") {
-        elems.push(<Text key={index}>{token.content}</Text>);
-        index++;
-      } else {
-        elems.push(<Text key={index}>{token.content || ""}</Text>);
-        index++;
-      }
-    }
-    return { element: elems, newIndex: index };
-  }
-
   static inlineTokenToTree(tokens: any[], index: number = 0, style = {}, level = 0: { element: JSX.Element[]; newIndex: number, style: TextStyle, level: number } {
     const elems: JSX.Element[] = [];
     while (index < tokens.length) {
