@@ -86,55 +86,93 @@ export class MarkdownParser {
     return { element: elems, newIndex: index };
   }
 
-  static inlineTokenToTree(tokens: any[], index: number = 0, style = {}, level = 0: { element: JSX.Element[]; newIndex: number, style: TextStyle, level: number } {
+  static inlineTokenToTree(
+    tokens: any[],
+    index: number = 0,
+    style: TextStyle = {},
+    level: number = 0
+  ): { element: JSX.Element[]; newIndex: number } {
     const elems: JSX.Element[] = [];
     while (index < tokens.length) {
       const token = tokens[index];
-      console.log(token.type, 'tokentype')
       switch (token.type) {
         case "softbreak":
-          {
-            elems.push(<Text key={index}>{'\n'}</Text>);
-            index++;
-          }
+          elems.push(<Text key={index}>{'\n'}</Text>);
+          index++;
+          break;
         case "text":
-          if (!Object.keys(style).length) {
+          if (level === 0) {
             elems.push(<Text key={index}>{token.content}</Text>);
           } else {
-            elems.push(<Span key={index} {...getTextStyle(style, style.href)}>{token.content}</Span>);
+            elems.push(<Span key={index} {...getTextStyle(style)}>{token.content}</Span>);
           }
           index++;
           break;
         case "em_open":
           {
-            const result = MarkdownParser.inlineTokenToTree(tokens, index + 1, { ...style, italic: true });
-            elems.push(<Text key={index}>{result.element}</Text>);
+            const result = MarkdownParser.inlineTokenToTree(
+              tokens,
+              index + 1,
+              { ...style, italic: true },
+              level + 1
+            );
+            if (level === 0) {
+              elems.push(<Text key={index}>{result.element}</Text>);
+            } else {
+              elems.push(...result.element);
+            }
             index = result.newIndex;
           }
           break;
         case "strong_open":
           {
-            const result = MarkdownParser.inlineTokenToTree(tokens, index + 1, { ...style, bold: true });
-            elems.push(<Text key={index}>{result.element}</Text>);
+            const result = MarkdownParser.inlineTokenToTree(
+              tokens,
+              index + 1,
+              { ...style, bold: true },
+              level + 1
+            );
+            if (level === 0) {
+              elems.push(<Text key={index}>{result.element}</Text>);
+            } else {
+              elems.push(...result.element);
+            }
             index = result.newIndex;
           }
           break;
         case "s_open":
           {
-            const result = MarkdownParser.inlineTokenToTree(tokens, index + 1, { ...style, strikethrough: true });
-            elems.push(<Text key={index}>{result.element}</Text>);
+            const result = MarkdownParser.inlineTokenToTree(
+              tokens,
+              index + 1,
+              { ...style, strikethrough: true },
+              level + 1
+            );
+            if (level === 0) {
+              elems.push(<Text key={index}>{result.element}</Text>);
+            } else {
+              elems.push(...result.element);
+            }
             index = result.newIndex;
           }
           break;
         default:
-          if (token.type.endsWith("_open")) {
-            const result = MarkdownParser.inlineTokenToTree(tokens, index + 1);
-            elems.push(<AutoLayout key={index}>{result.element}</AutoLayout>);
-            index = result.newIndex;
-          } else if (token.type.endsWith("_close")) {
+          if (token.type.endsWith("_close")) {
             return { element: elems, newIndex: index + 1 };
+          } else if (token.type.endsWith("_open")) {
+            const result = MarkdownParser.inlineTokenToTree(tokens, index + 1, style, level + 1);
+            if (level === 0) {
+              elems.push(<Text key={index}>{result.element}</Text>);
+            } else {
+              elems.push(...result.element);
+            }
+            index = result.newIndex;
           } else {
-            elems.push(<Text key={index}>{token.content || ""}</Text>);
+            if (level === 0) {
+              elems.push(<Text key={index}>{token.content || ""}</Text>);
+            } else {
+              elems.push(<Span key={index} {...getTextStyle(style)}>{token.content || ""}</Span>);
+            }
             index++;
           }
           break;
