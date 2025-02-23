@@ -120,8 +120,11 @@ export class MarkdownParser {
         );
       case "blockquote":
         return (
-          <AutoLayout width="fill-parent" key={index} spacing={2} wrap direction="horizontal" fill='#cecece' padding={10} cornerRadius={6}>
-            {children}
+          <AutoLayout width="fill-parent" key={index} direction="horizontal" spacing={16}>
+            <AutoLayout width={4} height="fill-parent" fill={MD_CONST.COLOR.GRAY} />
+            <AutoLayout width="fill-parent" direction="horizontal" spacing={2} wrap>
+              {children}
+            </AutoLayout>
           </AutoLayout>
         );
       case "image":
