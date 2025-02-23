@@ -271,7 +271,8 @@ export class MarkdownParser {
                 index = result.newIndex;
                 break;
               }
-              case 'bullet_list_open': {
+              case 'bullet_list_open':
+              case 'ordered_list_open': {
                 const isNested = token.level > 0;
                 const result = this.tokenToTree(tokens, index + 1, style);
                 if (isNested) {
