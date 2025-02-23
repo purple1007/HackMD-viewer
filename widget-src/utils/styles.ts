@@ -10,6 +10,7 @@ export interface TextStyle {
   heading?: {
     level: number;
   };
+  footnote?: boolean;
 }
 
 export const getTextStyle = (style?: TextStyle, href?: string) => {
@@ -31,7 +32,7 @@ export const getTextStyle = (style?: TextStyle, href?: string) => {
 
   return {
     fontWeight: style?.heading ? "extra-bold" : (style?.bold ? "bold" : "normal"),
-    fill: href
+    fill: href || style?.footnote
       ? MD_CONST.COLOR.PRIMARY
       : style?.code
       ? MD_CONST.COLOR.GRAY
@@ -40,9 +41,10 @@ export const getTextStyle = (style?: TextStyle, href?: string) => {
       : MD_CONST.COLOR.BLACK,
     italic: Boolean(style?.italic),
     textDecoration: textDecoration as "none" | "strikethrough" | "underline",
-    fontSize,
+    fontSize: style?.footnote ? 12 : fontSize,
     lineHeight,
     fontFamily: style?.code ? "JetBrains Mono" : "Inter",
     ...(validHref ? { href } : {}),
+    ...(style?.footnote ? { baselineOffset: 4 } : {}),
   };
 };

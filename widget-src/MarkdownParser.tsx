@@ -35,6 +35,9 @@ export class MarkdownParser {
       typographer: true,
     });
 
+    md.use(require('markdown-it-abbr'))
+    md.use(require('markdown-it-footnote'))
+
     const tokens = md.parse(markdown, {});
 
     // Process tokens to handle images at block level
@@ -318,6 +321,22 @@ export class MarkdownParser {
         case "html_inline":
           // skip html_inline
           index++
+          break;
+        case "footnote_ref":
+          if (level === 0) {
+            elems.push(
+              <Text key={index} {...getTextStyle({ footnote: true })}>
+                [{token.meta.id + 1}]
+              </Text>
+            );
+          } else {
+            elems.push(
+              <Span key={index} {...getTextStyle({ ...style, footnote: true })}>
+                [{token.meta.id + 1}]
+              </Span>
+            );
+          }
+          index++;
           break;
         default:
           if (token.type.endsWith("_close")) {
