@@ -106,7 +106,6 @@ export class MarkdownParser {
     token?: any,
     style: TextStyle = {},
   ): JSX.Element {
-    console.log('renderComponent', componentType)
     switch (componentType) {
       case "Text":
         return figma.widget.h(componentType, { key: index, ...getTextStyle(style, style.href) }, children);
@@ -140,6 +139,7 @@ export class MarkdownParser {
           />
         );
       default:
+        console.log('unsupported block component', componentType)
         return <Text key={index}>Component {JSON.stringify(componentType)} not supported</Text>;
     }
   }
@@ -152,7 +152,6 @@ export class MarkdownParser {
     const elems: JSX.Element[] = [];
     while (index < tokens.length) {
       const token = tokens[index];
-      console.log(token, 'token')
 
       switch (token.type) {
         case 'heading_open': {
@@ -162,7 +161,6 @@ export class MarkdownParser {
             heading: { level }
           };
           const result = this.tokenToTree(tokens, index + 1, newStyle);
-          console.log('heading open result', result, newStyle)
           elems.push(<AutoLayout direction="horizontal" width="fill-parent" wrap>{result.element}</AutoLayout>);
           index = result.newIndex;
           break;
@@ -295,6 +293,10 @@ export class MarkdownParser {
           }
           index++;
           break;
+        case "html_inline":
+          // skip html_inline
+          index++
+          break;
         default:
           if (token.type.endsWith("_close")) {
             return { element: elems, newIndex: index + 1 };
@@ -307,7 +309,7 @@ export class MarkdownParser {
             }
             index = result.newIndex;
           } else {
-            console.log('unhandle inline token', token.type)
+            console.log('unhandle inline token', token.type, token)
             if (level === 0) {
               elems.push(<Text key={index}>{token.content || ""}</Text>);
             } else {
