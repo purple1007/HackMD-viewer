@@ -10,6 +10,8 @@ import { BlockRenderer } from "./renderer/BlockRenderer";
 import { ListRenderer } from "./renderer/ListRenderer";
 import { ImageRenderer } from "./renderer/ImageRenderer";
 import { getTextStyle, TextStyle } from "./utils/styles";
+import { MD_CONST } from "./constants/markdown";
+import { Children } from "react";
 
 export class MarkdownParser {
   static parseBlock(markdown: string): StyledBlock[] {
@@ -30,8 +32,6 @@ export class MarkdownParser {
   static renderMarkdownAsTree(markdown: string): JSX.Element {
     const md = new MarkdownIt('default', {
       html: true,
-      breaks: true,
-      linkify: true,
       typographer: false,
     });
 
@@ -95,26 +95,33 @@ export class MarkdownParser {
     console.log(processedTokens, 'processedTokens')
 
     const treeResult = this.tokenToTree(processedTokens, 0);
-    return <AutoLayout direction="vertical" width="fill-parent">{treeResult.element}</AutoLayout>;
+    console.log(treeResult, 'treeResult')
+    return <AutoLayout direction="vertical" width="fill-parent" spacing={10}>{treeResult.element}</AutoLayout>;
   }
 
-  static renderComponent(
+  static renderBlockComponent(
     componentType: string,
     index: number,
     children: JSX.Element[],
-    token?: any
+    token?: any,
+    style: TextStyle = {},
   ): JSX.Element {
+    console.log('renderComponent', componentType)
     switch (componentType) {
       case "Text":
-        return figma.widget.h(componentType, { key: index }, children);
-      case "h1":
-      case "h2":
-      case "h3":
-      case "h4":
-      case "h5":
-        return <AutoLayout width="fill-parent" key={index}>{children}</AutoLayout>;
+        return figma.widget.h(componentType, { key: index, ...getTextStyle(style, style.href) }, children);
       case "p":
-        return <AutoLayout width="fill-parent" key={index} spacing={2} wrap>{children}</AutoLayout>;
+        return (
+          <AutoLayout width="fill-parent" key={index} spacing={2} wrap direction="horizontal">
+            {children}
+          </AutoLayout>
+        );
+      case "blockquote":
+        return (
+          <AutoLayout width="fill-parent" key={index} spacing={2} wrap direction="horizontal" fill='#cecece' padding={10} cornerRadius={6}>
+            {children}
+          </AutoLayout>
+        );
       case "image":
         const srcAttr = token?.attrs?.find(([attr]: [string, string]) => attr === 'src');
         const src = srcAttr?.[1] || '';
@@ -127,31 +134,55 @@ export class MarkdownParser {
     }
   }
 
-  // Recursively convert tokens to a React-like element tree.
   private static tokenToTree(
     tokens: any[],
-    index: number = 0
+    index: number = 0,
+    style: TextStyle = {}
   ): { element: JSX.Element[]; newIndex: number } {
     const elems: JSX.Element[] = [];
     while (index < tokens.length) {
       const token = tokens[index];
-      if (token.type.endsWith("_close")) {
-        return { element: elems, newIndex: index + 1 };
-      } else if (token.type.endsWith("_open")) {
-        const componentType = token.tag;
-        const result = this.tokenToTree(tokens, index + 1);
-        const children = result.element;
-        index = result.newIndex;
-        elems.push(
-          MarkdownParser.renderComponent(componentType, index, children, token)
-        );
-      } else if (token.type === "inline") {
-        const { element } = MarkdownParser.inlineTokenToTree(token.children, 0);
-        elems.push(element);
-        index++;
-      } else {
-        elems.push(MarkdownParser.renderComponent(token.type, index, [], token));
-        index++;
+      console.log(token, 'token')
+
+      switch (token.type) {
+        case 'heading_open': {
+          const level = Number.parseInt(token.tag.substring(1), 10);
+          const newStyle = {
+            ...style,
+            heading: { level }
+          };
+          const result = this.tokenToTree(tokens, index + 1, newStyle);
+          console.log('heading open result', result, newStyle)
+          elems.push(<AutoLayout direction="horizontal" width="fill-parent" wrap>{result.element}</AutoLayout>);
+          index = result.newIndex;
+          break;
+        }
+        case 'paragraph_open': {
+          const result = this.tokenToTree(tokens, index + 1, style);
+          elems.push(<AutoLayout direction="horizontal" width="fill-parent" wrap spacing={3}>{result.element}</AutoLayout>);
+          index = result.newIndex;
+          break;
+        }
+        case 'inline': {
+          const { element } = MarkdownParser.inlineTokenToTree(token.children, 0, style);
+          elems.push(element);
+          index++;
+          break;
+        }
+        default: {
+          if (token.type.endsWith("_close")) {
+            return { element: elems, newIndex: index + 1 };
+          } else if (token.type.endsWith("_open")) {
+            const componentType = token.tag;
+            const result = this.tokenToTree(tokens, index + 1, style);
+            elems.push(MarkdownParser.renderBlockComponent(componentType, index, result.element, token, style));
+            index = result.newIndex;
+            break;
+          } else {
+            elems.push(MarkdownParser.renderBlockComponent(token.type, index, [], token, undefined, style));
+            index++;
+          }
+        }
       }
     }
     return { element: elems, newIndex: index };
@@ -174,7 +205,7 @@ export class MarkdownParser {
           break;
         case "text":
           if (level === 0) {
-            elems.push(<Text key={index}>{token.content}</Text>);
+            elems.push(<Text key={index} {...getTextStyle(style, style.href)}>{token.content}</Text>);
           } else {
             elems.push(<Span key={index} {...getTextStyle(style, style.href)}>{token.content}</Span>);
           }
