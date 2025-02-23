@@ -328,6 +328,81 @@ export class MarkdownTreeRenderer {
                 index = result.newIndex;
                 break;
               }
+              case 'table_open': {
+                const result = this.tokenToTree(tokens, index + 1, style);
+                elems.push(
+                  <AutoLayout
+                    key={index}
+                    width="fill-parent"
+                    direction="vertical"
+                    stroke={MD_CONST.COLOR.GRAY}
+                    strokeWidth={1}
+                    cornerRadius={4}
+                    overflow="hidden"
+                  >
+                    {result.element}
+                  </AutoLayout>
+                );
+                index = result.newIndex;
+                break;
+              }
+              case 'thead_open':
+              case 'tbody_open': {
+                const result = this.tokenToTree(tokens, index + 1, style);
+                elems.push(
+                  <AutoLayout
+                    key={index}
+                    width="fill-parent"
+                    direction="vertical"
+                  >
+                    {result.element}
+                  </AutoLayout>
+                );
+                index = result.newIndex;
+                break;
+              }
+              case 'tr_open': {
+                const result = this.tokenToTree(tokens, index + 1, style);
+                elems.push(
+                  <AutoLayout
+                    key={index}
+                    width="fill-parent"
+                    direction="horizontal"
+                    fill={token.tag === 'tr' && tokens[index - 2]?.type === 'thead_open' ? MD_CONST.COLOR.CODE_BG : undefined}
+                  >
+                    {result.element}
+                  </AutoLayout>
+                );
+                index = result.newIndex;
+                break;
+              }
+              case 'th_open':
+              case 'td_open': {
+                const result = this.tokenToTree(tokens, index + 1, style);
+                const align = token.attrs?.find(([attr]: [string, string]) => attr === 'style')?.[1];
+                const textAlign = align?.includes('text-align:')
+                  ? align.split('text-align:')[1].trim()
+                  : 'left';
+                elems.push(
+                  <AutoLayout
+                    key={index}
+                    stroke={MD_CONST.COLOR.GRAY}
+                    strokeWidth={1}
+                    padding={8}
+                    width="fill-parent"
+                  >
+                    <Text
+                      width="fill-parent"
+                      {...getTextStyle({ bold: token.type === 'th_open' })}
+                      horizontalAlignText={textAlign as "left" | "center" | "right"}
+                    >
+                      {result.element}
+                    </Text>
+                  </AutoLayout>
+                );
+                index = result.newIndex;
+                break;
+              }
               default: {
                 const componentType = token.tag;
                 const result = this.tokenToTree(tokens, index + 1, style);
