@@ -32,7 +32,7 @@ export class MarkdownParser {
   static renderMarkdownAsTree(markdown: string): JSX.Element {
     const md = new MarkdownIt('default', {
       html: true,
-      typographer: false,
+      typographer: true,
     });
 
     const tokens = md.parse(markdown, {});
