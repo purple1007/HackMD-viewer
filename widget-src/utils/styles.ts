@@ -33,7 +33,7 @@ export const getTextStyle = (style?: TextStyle, href?: string) => {
 
   const lineHeight = style?.heading
     ? MD_CONST.HEADING_SIZES[style.heading.level as keyof typeof MD_CONST.HEADING_SIZES] * 1.6
-    : undefined;
+    : 28;
 
   return {
     fontWeight: style?.heading ? "extra-bold" : (style?.bold ? "bold" : "normal"),

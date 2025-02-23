@@ -290,240 +290,170 @@ export class MarkdownParser {
   static inlineTokenToTree(
     tokens: any[],
     index: number = 0,
-    style: TextStyle = {},
-    level: number = 0
-  ): { element: JSX.Element[]; newIndex: number } {
-    const elems: JSX.Element[] = [];
-    // console.log('inline-tokens', tokens.map(token => token.type))
+    style: TextStyle = {}
+  ): { element: JSX.Element; newIndex: number } {
+    const spans: JSX.Element[] = [];
+    let currentStyle = { ...style };
+    let currentText = '';
+
+    const flushText = () => {
+      if (currentText) {
+        spans.push(
+          <Span key={spans.length} {...getTextStyle(currentStyle, currentStyle.href)}>
+            {currentText}
+          </Span>
+        );
+        currentText = '';
+      }
+    };
+
     while (index < tokens.length) {
       const token = tokens[index];
+
       switch (token.type) {
         case "softbreak":
-          elems.push(<Text key={index}>{'\n'}</Text>);
+          flushText();
+          spans.push(<Span key={spans.length}>{'\n'}</Span>);
           index++;
           break;
+
         case "text":
-          if (level === 0) {
-            elems.push(<Text key={index} {...getTextStyle(style, style.href)}>{token.content}</Text>);
-          } else {
-            elems.push(<Span key={index} {...getTextStyle(style, style.href)}>{token.content}</Span>);
-          }
+          currentText += token.content;
           index++;
           break;
-        case "em_open":
-          {
-            const result = MarkdownParser.inlineTokenToTree(
-              tokens,
-              index + 1,
-              { ...style, italic: true },
-              level + 1
-            );
-            if (level === 0) {
-              elems.push(<Text key={index}>{result.element}</Text>);
-            } else {
-              elems.push(...result.element);
-            }
-            index = result.newIndex;
-          }
-          break;
-        case "strong_open":
-          {
-            const result = MarkdownParser.inlineTokenToTree(
-              tokens,
-              index + 1,
-              { ...style, bold: true },
-              level + 1
-            );
-            if (level === 0) {
-              elems.push(<Text key={index}>{result.element}</Text>);
-            } else {
-              elems.push(...result.element);
-            }
-            index = result.newIndex;
-          }
-          break;
-        case "s_open":
-          {
-            const result = MarkdownParser.inlineTokenToTree(
-              tokens,
-              index + 1,
-              { ...style, strikethrough: true },
-              level + 1
-            );
-            if (level === 0) {
-              elems.push(<Text key={index}>{result.element}</Text>);
-            } else {
-              elems.push(...result.element);
-            }
-            index = result.newIndex;
-          }
-          break;
-        case "link_open":
-          {
-            const hrefAttr = token.attrs?.find(([attr]) => attr === 'href');
-            const href = hrefAttr?.[1] || '';
-            const result = MarkdownParser.inlineTokenToTree(
-              tokens,
-              index + 1,
-              { ...style, href },
-              level + 1
-            );
-            if (level === 0) {
-              elems.push(<Text key={index}>{result.element}</Text>);
-            } else {
-              elems.push(...result.element);
-            }
-            index = result.newIndex;
-          }
-          break;
+
         case "code_inline":
-          if (level === 0) {
-            elems.push(<Text key={index} {...getTextStyle({ code: true })}>{token.content}</Text>);
-          } else {
-            elems.push(<Span key={index} {...getTextStyle({ ...style, code: true })}>{token.content}</Span>);
-          }
+          flushText();
+          spans.push(
+            <Span key={spans.length} {...getTextStyle({ ...currentStyle, code: true })}>
+              {token.content}
+            </Span>
+          );
           index++;
           break;
+
         case "html_inline":
-          // skip html_inline
-          index++
-          break;
-        case "footnote_ref":
-          if (level === 0) {
-            elems.push(
-              <Text key={index} {...getTextStyle({ footnote: true })}>
-                [{token.meta.id + 1}]
-              </Text>
-            );
-          } else {
-            elems.push(
-              <Span key={index} {...getTextStyle({ ...style, footnote: true })}>
-                [{token.meta.id + 1}]
-              </Span>
-            );
-          }
           index++;
           break;
+
+        case "footnote_ref":
+          flushText();
+          spans.push(
+            <Span key={spans.length} {...getTextStyle({ ...currentStyle, footnote: true })}>
+              [{token.meta.id + 1}]
+            </Span>
+          );
+          index++;
+          break;
+
+        case "strong_open":
+          flushText();
+          currentStyle = { ...currentStyle, bold: true };
+          index++;
+          break;
+
+        case "em_open":
+          flushText();
+          currentStyle = { ...currentStyle, italic: true };
+          index++;
+          break;
+
+        case "s_open":
+          flushText();
+          currentStyle = { ...currentStyle, strikethrough: true };
+          index++;
+          break;
+
         case "mark_open":
-          {
-            const result = MarkdownParser.inlineTokenToTree(
-              tokens,
-              index + 1,
-              { ...style, highlight: true },
-              level + 1
-            );
-            if (level === 0) {
-              elems.push(<Text key={index}>{result.element}</Text>);
-            } else {
-              elems.push(...result.element);
-            }
-            index = result.newIndex;
-          }
+          flushText();
+          currentStyle = { ...currentStyle, highlight: true };
+          index++;
           break;
+
         case "ins_open":
-          {
-            const result = MarkdownParser.inlineTokenToTree(
-              tokens,
-              index + 1,
-              { ...style, underline: true },
-              level + 1
-            );
-            if (level === 0) {
-              elems.push(<Text key={index}>{result.element}</Text>);
-            } else {
-              elems.push(...result.element);
-            }
-            index = result.newIndex;
-          }
+          flushText();
+          currentStyle = { ...currentStyle, underline: true };
+          index++;
           break;
+
         case "sup_open":
-          {
-            const result = MarkdownParser.inlineTokenToTree(
-              tokens,
-              index + 1,
-              { ...style, sup: true },
-              level + 1
-            );
-            if (level === 0) {
-              elems.push(<Text key={index}>{result.element}</Text>);
-            } else {
-              elems.push(...result.element);
-            }
-            index = result.newIndex;
-          }
+          flushText();
+          currentStyle = { ...currentStyle, sup: true };
+          index++;
           break;
+
         case "sub_open":
-          {
-            const result = MarkdownParser.inlineTokenToTree(
-              tokens,
-              index + 1,
-              { ...style, sub: true },
-              level + 1
-            );
-            if (level === 0) {
-              elems.push(<Text key={index}>{result.element}</Text>);
-            } else {
-              elems.push(...result.element);
-            }
-            index = result.newIndex;
-          }
+          flushText();
+          currentStyle = { ...currentStyle, sub: true };
+          index++;
           break;
+
         case "ruby_open":
-          {
-            const result = MarkdownParser.inlineTokenToTree(
-              tokens,
-              index + 1,
-              { ...style, ruby: true },
-              level + 1
-            );
-            if (level === 0) {
-              elems.push(<Text key={index}>{result.element}</Text>);
-            } else {
-              elems.push(...result.element);
-            }
-            index = result.newIndex;
-          }
+          flushText();
+          currentStyle = { ...currentStyle, ruby: true };
+          index++;
           break;
+
         case "rt_open":
-          {
-            const result = MarkdownParser.inlineTokenToTree(
-              tokens,
-              index + 1,
-              { ...style, rt: true },
-              level + 1
-            );
-            if (level === 0) {
-              elems.push(<Text key={index}>{result.element}</Text>);
-            } else {
-              elems.push(...result.element);
-            }
-            index = result.newIndex;
-          }
+          flushText();
+          currentStyle = { ...currentStyle, rt: true };
+          index++;
           break;
+
+        case "link_open":
+          flushText();
+          const hrefAttr = token.attrs?.find(([attr]) => attr === 'href');
+          currentStyle = { ...currentStyle, href: hrefAttr?.[1] || '' };
+          index++;
+          break;
+
         default:
           if (token.type.endsWith("_close")) {
-            return { element: elems, newIndex: index + 1 };
-          } else if (token.type.endsWith("_open")) {
-            console.log('unhandle inline open token', token.type, token)
-            const result = MarkdownParser.inlineTokenToTree(tokens, index + 1, style, level + 1);
-            if (level === 0) {
-              elems.push(<Text key={index}>{result.element}</Text>);
-            } else {
-              elems.push(...result.element);
+            flushText();
+            const styleKey = token.type.replace('_close', '');
+            switch (styleKey) {
+              case 'strong':
+                currentStyle = { ...currentStyle, bold: false };
+                break;
+              case 'em':
+                currentStyle = { ...currentStyle, italic: false };
+                break;
+              case 's':
+                currentStyle = { ...currentStyle, strikethrough: false };
+                break;
+              case 'mark':
+                currentStyle = { ...currentStyle, highlight: false };
+                break;
+              case 'ins':
+                currentStyle = { ...currentStyle, underline: false };
+                break;
+              case 'sup':
+                currentStyle = { ...currentStyle, sup: false };
+                break;
+              case 'sub':
+                currentStyle = { ...currentStyle, sub: false };
+                break;
+              case 'ruby':
+                currentStyle = { ...currentStyle, ruby: false };
+                break;
+              case 'rt':
+                currentStyle = { ...currentStyle, rt: false };
+                break;
+              case 'link':
+                currentStyle = { ...currentStyle, href: undefined };
+                break;
             }
-            index = result.newIndex;
+            index++;
           } else {
-            console.log('unhandle inline token', token.type, token)
-            if (level === 0) {
-              elems.push(<Text key={index}>{token.content || ""}</Text>);
-            } else {
-              elems.push(<Span key={index} {...getTextStyle(style, style.href)}>{token.content || ""}</Span>);
-            }
+            console.log('unhandled token', token.type);
             index++;
           }
           break;
       }
     }
-    return { element: elems, newIndex: index };
+
+    flushText();
+    return { element: <Text width="fill-parent">{spans}</Text>, newIndex: index };
   }
+
 }
