@@ -22,6 +22,7 @@
     "dompurify": "^3.2.3",
     "markdown-it": "14.1.0",
     "markdown-it-abbr": "^2.0.0",
+    "markdown-it-emoji": "^3.0.0",
     "markdown-it-footnote": "^4.0.0",
     "markdown-it-ins": "^4.0.0",
     "markdown-it-mark": "^4.0.0",

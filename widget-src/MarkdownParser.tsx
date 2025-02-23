@@ -5,6 +5,7 @@ import { TextSegment } from "./types/text";
 import { StyledBlock, styledImage } from "./types/block";
 
 import MarkdownIt from "markdown-it";
+import { full as emoji } from "markdown-it-emoji"
 import { BlockParser } from "./parser/BlockParser";
 import { BlockRenderer } from "./renderer/BlockRenderer";
 import { ListRenderer } from "./renderer/ListRenderer";
@@ -42,6 +43,7 @@ export class MarkdownParser {
     md.use(require('markdown-it-sub'))
     md.use(require('markdown-it-sup'))
     md.use(require('markdown-it-ruby'))
+    md.use(emoji)
 
     const tokens = md.parse(markdown, {});
 
@@ -346,6 +348,16 @@ export class MarkdownParser {
           index++;
           break;
 
+        case "emoji":
+          flushText();
+          spans.push(
+            <Span key={spans.length} {...getTextStyle(currentStyle)}>
+              {token.content}
+            </Span>
+          );
+          index++;
+          break;
+
         case "strong_open":
           flushText();
           currentStyle = { ...currentStyle, bold: true };
@@ -445,7 +457,7 @@ export class MarkdownParser {
             }
             index++;
           } else {
-            console.log('unhandled token', token.type);
+            console.log('unhandled token', token.type, token);
             index++;
           }
           break;
