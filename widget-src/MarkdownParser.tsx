@@ -138,6 +138,28 @@ export class MarkdownParser {
             padding={{ vertical: 10 }}
           />
         );
+      case "code_block":
+      case "fence":
+        return (
+          <AutoLayout
+            key={index}
+            width="fill-parent"
+            direction="vertical"
+            fill={MD_CONST.COLOR.CODE_BG}
+            padding={16}
+            cornerRadius={8}
+          >
+            <Text
+              width="fill-parent"
+              fontFamily="JetBrains Mono"
+              fontSize={14}
+              fill={MD_CONST.COLOR.BLACK}
+              lineHeight={21}
+            >
+              {token.content}
+            </Text>
+          </AutoLayout>
+        );
       default:
         console.log('unsupported block component', componentType)
         return <Text key={index}>Component {JSON.stringify(componentType)} not supported</Text>;
