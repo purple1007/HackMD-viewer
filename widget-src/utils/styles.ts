@@ -6,6 +6,7 @@ export interface TextStyle {
   highlight?: boolean;
   italic?: boolean;
   strikethrough?: boolean;
+  underline?: boolean;
   href?: string;
   heading?: {
     level: number;
@@ -14,7 +15,7 @@ export interface TextStyle {
 }
 
 export const getTextStyle = (style?: TextStyle, href?: string) => {
-  const textDecoration = href
+  const textDecoration = style?.underline || href
     ? "underline"
     : style?.strikethrough
     ? "strikethrough"

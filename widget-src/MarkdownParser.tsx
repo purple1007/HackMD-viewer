@@ -38,6 +38,7 @@ export class MarkdownParser {
     md.use(require('markdown-it-abbr'))
     md.use(require('markdown-it-footnote'))
     md.use(require('markdown-it-mark'))
+    md.use(require('markdown-it-ins'))
 
     const tokens = md.parse(markdown, {});
 
@@ -406,6 +407,22 @@ export class MarkdownParser {
               tokens,
               index + 1,
               { ...style, highlight: true },
+              level + 1
+            );
+            if (level === 0) {
+              elems.push(<Text key={index}>{result.element}</Text>);
+            } else {
+              elems.push(...result.element);
+            }
+            index = result.newIndex;
+          }
+          break;
+        case "ins_open":
+          {
+            const result = MarkdownParser.inlineTokenToTree(
+              tokens,
+              index + 1,
+              { ...style, underline: true },
               level + 1
             );
             if (level === 0) {
