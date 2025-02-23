@@ -37,6 +37,7 @@ export class MarkdownParser {
 
     md.use(require('markdown-it-abbr'))
     md.use(require('markdown-it-footnote'))
+    md.use(require('markdown-it-mark'))
 
     const tokens = md.parse(markdown, {});
 
@@ -399,10 +400,27 @@ export class MarkdownParser {
           }
           index++;
           break;
+        case "mark_open":
+          {
+            const result = MarkdownParser.inlineTokenToTree(
+              tokens,
+              index + 1,
+              { ...style, highlight: true },
+              level + 1
+            );
+            if (level === 0) {
+              elems.push(<Text key={index}>{result.element}</Text>);
+            } else {
+              elems.push(...result.element);
+            }
+            index = result.newIndex;
+          }
+          break;
         default:
           if (token.type.endsWith("_close")) {
             return { element: elems, newIndex: index + 1 };
           } else if (token.type.endsWith("_open")) {
+            console.log('unhandle inline open token', token.type, token)
             const result = MarkdownParser.inlineTokenToTree(tokens, index + 1, style, level + 1);
             if (level === 0) {
               elems.push(<Text key={index}>{result.element}</Text>);
