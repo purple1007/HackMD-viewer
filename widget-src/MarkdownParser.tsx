@@ -129,6 +129,16 @@ export class MarkdownParser {
           type: 'image',
           src,
         }, index)
+      case "hr":
+        return (
+          <AutoLayout
+            key={index}
+            width="fill-parent"
+            height={1}
+            fill={MD_CONST.COLOR.GRAY}
+            padding={{ vertical: 10 }}
+          />
+        );
       default:
         return <Text key={index}>Component {JSON.stringify(componentType)} not supported</Text>;
     }
