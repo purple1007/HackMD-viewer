@@ -10,6 +10,7 @@ const {
 } = widget;
 
 import { MarkdownParser } from "./MarkdownParser";
+import { MarkdownTreeRenderer } from "./MarkdownTreeRenderer";
 import { CONTAINER_SIZE, MD_CONST } from "./constants/markdown";
 import { getHackMDId } from "./utils/hackMDId";
 
@@ -76,7 +77,7 @@ function HackMDViewer() {
     }
 
     if (content) {
-      return MarkdownParser.renderMarkdownAsTree(content);
+      return MarkdownTreeRenderer.renderMarkdownAsTree(content);
 
       const blocks = MarkdownParser.parseBlock(content);
       console.log("URL:", url);
