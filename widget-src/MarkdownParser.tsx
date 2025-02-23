@@ -166,8 +166,17 @@ export class MarkdownParser {
             </Text>
           </AutoLayout>
         );
+      case "footnote_anchor":
+        return (
+          <Text
+            key={index}
+            {...getTextStyle({ footnote: true })}
+          >
+            [{token.meta.id + 1}]
+          </Text>
+        );
       default:
-        console.log('unsupported block component', componentType)
+        console.log('unsupported block component', componentType, token)
         return <Text key={index}>Component {JSON.stringify(componentType)} not supported</Text>;
     }
   }
@@ -209,10 +218,59 @@ export class MarkdownParser {
           if (token.type.endsWith("_close")) {
             return { element: elems, newIndex: index + 1 };
           } else if (token.type.endsWith("_open")) {
-            const componentType = token.tag;
-            const result = this.tokenToTree(tokens, index + 1, style);
-            elems.push(MarkdownParser.renderBlockComponent(componentType, index, result.element, token, style));
-            index = result.newIndex;
+            switch (token.type) {
+              case 'footnote_block_open': {
+                const result = this.tokenToTree(tokens, index + 1, style);
+                elems.push(
+                  <AutoLayout
+                    key={index}
+                    width="fill-parent"
+                    direction="vertical"
+                    spacing={8}
+                    padding={{ top: 16 }}
+                  >
+                    <AutoLayout
+                      width="fill-parent"
+                      height={1}
+                      fill={MD_CONST.COLOR.GRAY}
+                    />
+                    {result.element}
+                  </AutoLayout>
+                );
+                index = result.newIndex;
+                break;
+              }
+              case 'footnote_open': {
+                const result = this.tokenToTree(tokens, index + 1, style);
+                elems.push(
+                  <AutoLayout
+                    key={index}
+                    width="fill-parent"
+                    direction="horizontal"
+                    spacing={4}
+                  >
+                    <Text
+                      {...getTextStyle({ footnote: true })}
+                      width="hug-contents"
+                    >
+                      [{token.meta?.id + 1}]
+                    </Text>
+                    <AutoLayout width="fill-parent" direction="horizontal" spacing={2} wrap>
+                      {result.element}
+                    </AutoLayout>
+                  </AutoLayout>
+                );
+                index = result.newIndex;
+                break;
+              }
+              default: {
+                const componentType = token.tag;
+                const result = this.tokenToTree(tokens, index + 1, style);
+                elems.push(MarkdownParser.renderBlockComponent(componentType, index, result.element, token, style));
+                index = result.newIndex;
+                break;
+              }
+            }
             break;
           } else {
             elems.push(MarkdownParser.renderBlockComponent(token.type, index, [], token, undefined, style));
