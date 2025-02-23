@@ -12,6 +12,8 @@ export interface TextStyle {
     level: number;
   };
   footnote?: boolean;
+  sup?: boolean;
+  sub?: boolean;
 }
 
 export const getTextStyle = (style?: TextStyle, href?: string) => {
@@ -47,5 +49,7 @@ export const getTextStyle = (style?: TextStyle, href?: string) => {
     fontFamily: style?.code ? "JetBrains Mono" : "Inter",
     ...(validHref ? { href } : {}),
     ...(style?.footnote ? { baselineOffset: 4 } : {}),
+    ...(style?.sup ? { baselineOffset: 8, fontSize: fontSize * 0.8 } : {}),
+    ...(style?.sub ? { baselineOffset: -4, fontSize: fontSize * 0.8 } : {}),
   };
 };

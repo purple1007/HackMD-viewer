@@ -25,6 +25,8 @@
     "markdown-it-footnote": "^4.0.0",
     "markdown-it-ins": "^4.0.0",
     "markdown-it-mark": "^4.0.0",
+    "markdown-it-sub": "^2.0.0",
+    "markdown-it-sup": "^2.0.0",
     "marked": "^15.0.6",
     "react": "^17.0.0",
     "react-dom": "^17.0.0"
