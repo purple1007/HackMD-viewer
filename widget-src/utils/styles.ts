@@ -19,31 +19,38 @@ export interface TextStyle {
 }
 
 export const getTextStyle = (style?: TextStyle, href?: string) => {
-  const textDecoration = style?.underline || href
-    ? "underline"
-    : style?.strikethrough
-    ? "strikethrough"
-    : "none";
+  const textDecoration =
+    style?.underline || href
+      ? "underline"
+      : style?.strikethrough
+      ? "strikethrough"
+      : "none";
 
-  const validHref = href && (href.startsWith('http://') || href.startsWith('https://'))
+  const validHref =
+    href && (href.startsWith("http://") || href.startsWith("https://"));
 
   const fontSize = style?.heading
-    ? MD_CONST.HEADING_SIZES[style.heading.level as keyof typeof MD_CONST.HEADING_SIZES]
+    ? MD_CONST.HEADING_SIZES[
+        style.heading.level as keyof typeof MD_CONST.HEADING_SIZES
+      ]
     : MD_CONST.FONT_SIZE;
 
   const lineHeight = style?.heading
-    ? MD_CONST.HEADING_SIZES[style.heading.level as keyof typeof MD_CONST.HEADING_SIZES] * 1.6
+    ? MD_CONST.HEADING_SIZES[
+        style.heading.level as keyof typeof MD_CONST.HEADING_SIZES
+      ] * 1.6
     : 28;
 
   return {
-    fontWeight: style?.heading ? "extra-bold" : (style?.bold ? "bold" : "normal"),
-    fill: href || style?.footnote
-      ? MD_CONST.COLOR.PRIMARY
-      : style?.code
-      ? MD_CONST.COLOR.GRAY
-      : style?.highlight
-      ? MD_CONST.COLOR.HIGHLIGHT
-      : MD_CONST.COLOR.BLACK,
+    fontWeight: style?.heading ? "extra-bold" : style?.bold ? "bold" : "normal",
+    fill:
+      href || style?.footnote
+        ? MD_CONST.COLOR.PRIMARY
+        : style?.code
+        ? MD_CONST.COLOR.GRAY
+        : style?.highlight
+        ? MD_CONST.COLOR.HIGHLIGHT
+        : MD_CONST.COLOR.BLACK,
     italic: Boolean(style?.italic),
     textDecoration: textDecoration as "none" | "strikethrough" | "underline",
     fontSize: style?.footnote ? 12 : fontSize,

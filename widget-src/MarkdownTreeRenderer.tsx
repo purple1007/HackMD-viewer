@@ -1,10 +1,10 @@
-const { widget } = figma
+const { widget } = figma;
 
 const { AutoLayout, Text, Span, SVG } = widget;
 import { getTextStyle, TextStyle } from "./utils/styles";
 import MarkdownIt from "markdown-it";
-import { full as emoji } from "markdown-it-emoji"
-import markdownitContainer from 'markdown-it-container'
+import { full as emoji } from "markdown-it-emoji";
+import markdownitContainer from "markdown-it-container";
 import { MD_CONST } from "./constants/markdown";
 import { ImageRenderer } from "./renderer/ImageRenderer";
 import { ListRenderer } from "./renderer/ListRenderer";
@@ -13,86 +13,93 @@ import { Dot } from "./components/icons";
 export class MarkdownTreeRenderer {
   // New function: Convert markdown-it tokens to a React-like tree and render them.
   static renderMarkdownAsTree(markdown: string): JSX.Element {
-    const md = new MarkdownIt('default', {
+    const md = new MarkdownIt("default", {
       html: true,
       typographer: true,
     });
 
-    md.use(require('markdown-it-abbr'))
-    md.use(require('markdown-it-footnote'))
-    md.use(require('markdown-it-mark'))
-    md.use(require('markdown-it-ins'))
-    md.use(require('markdown-it-sub'))
-    md.use(require('markdown-it-sup'))
-    md.use(require('markdown-it-ruby'))
-    md.use(emoji)
-    md.use(markdownitContainer, 'success')
-    md.use(markdownitContainer, 'info')
-    md.use(markdownitContainer, 'warning')
-    md.use(markdownitContainer, 'danger')
+    md.use(require("markdown-it-abbr"));
+    md.use(require("markdown-it-footnote"));
+    md.use(require("markdown-it-mark"));
+    md.use(require("markdown-it-ins"));
+    md.use(require("markdown-it-sub"));
+    md.use(require("markdown-it-sup"));
+    md.use(require("markdown-it-ruby"));
+    md.use(emoji);
+    md.use(markdownitContainer, "success");
+    md.use(markdownitContainer, "info");
+    md.use(markdownitContainer, "warning");
+    md.use(markdownitContainer, "danger");
 
     const tokens = md.parse(markdown, {});
 
     // Process tokens to handle images at block level
-    const processedTokens = tokens.reduce((acc: any[], token: any, index: number) => {
-      if (token.type === 'inline' && token.children) {
-        // Find all image indices in children
-        const imageIndices = token.children
-          .map((t: any, i: number) => t.type === 'image' ? i : -1)
-          .filter((i: number) => i !== -1);
+    const processedTokens = tokens.reduce(
+      (acc: any[], token: any, index: number) => {
+        if (token.type === "inline" && token.children) {
+          // Find all image indices in children
+          const imageIndices = token.children
+            .map((t: any, i: number) => (t.type === "image" ? i : -1))
+            .filter((i: number) => i !== -1);
 
-        if (imageIndices.length === 0) {
-          // No images, just add the token as is
-          acc.push(token);
-        } else {
-          // Split the children around images
-          let lastIndex = 0;
-          imageIndices.forEach((imgIndex: number) => {
-            // Add text before image if exists
-            const beforeImage = token.children.slice(lastIndex, imgIndex);
-            if (beforeImage.length > 0) {
+          if (imageIndices.length === 0) {
+            // No images, just add the token as is
+            acc.push(token);
+          } else {
+            // Split the children around images
+            let lastIndex = 0;
+            imageIndices.forEach((imgIndex: number) => {
+              // Add text before image if exists
+              const beforeImage = token.children.slice(lastIndex, imgIndex);
+              if (beforeImage.length > 0) {
+                acc.push({
+                  ...token,
+                  children: beforeImage,
+                });
+              }
+
+              // Close paragraph before image
+              if (tokens[index - 1]?.type === "paragraph_open") {
+                acc.push({ type: "paragraph_close" });
+              }
+
+              // Add the image token
+              acc.push(token.children[imgIndex]);
+
+              // Open new paragraph after image
+              if (tokens[index + 1]?.type === "paragraph_close") {
+                acc.push({ type: "paragraph_open" });
+              }
+
+              lastIndex = imgIndex + 1;
+            });
+
+            // Add remaining text after last image if exists
+            const afterLastImage = token.children.slice(lastIndex);
+            if (afterLastImage.length > 0) {
               acc.push({
                 ...token,
-                children: beforeImage
+                children: afterLastImage,
               });
             }
-
-            // Close paragraph before image
-            if (tokens[index - 1]?.type === 'paragraph_open') {
-              acc.push({ type: 'paragraph_close' });
-            }
-
-            // Add the image token
-            acc.push(token.children[imgIndex]);
-
-            // Open new paragraph after image
-            if (tokens[index + 1]?.type === 'paragraph_close') {
-              acc.push({ type: 'paragraph_open' });
-            }
-
-            lastIndex = imgIndex + 1;
-          });
-
-          // Add remaining text after last image if exists
-          const afterLastImage = token.children.slice(lastIndex);
-          if (afterLastImage.length > 0) {
-            acc.push({
-              ...token,
-              children: afterLastImage
-            });
           }
+        } else {
+          acc.push(token);
         }
-      } else {
-        acc.push(token);
-      }
-      return acc;
-    }, []);
+        return acc;
+      },
+      []
+    );
 
-    console.log(processedTokens, 'processedTokens')
+    console.log(processedTokens, "processedTokens");
 
     const treeResult = this.tokenToTree(processedTokens, 0);
-    console.log(treeResult, 'treeResult')
-    return <AutoLayout direction="vertical" width="fill-parent" spacing={10}>{treeResult.element}</AutoLayout>;
+    console.log(treeResult, "treeResult");
+    return (
+      <AutoLayout direction="vertical" width="fill-parent" spacing={10}>
+        {treeResult.element}
+      </AutoLayout>
+    );
   }
 
   static renderBlockComponent(
@@ -100,33 +107,62 @@ export class MarkdownTreeRenderer {
     index: number,
     children: JSX.Element[],
     token?: any,
-    style: TextStyle = {},
+    style: TextStyle = {}
   ): JSX.Element {
     switch (componentType) {
       case "Text":
-        return figma.widget.h(componentType, { key: index, ...getTextStyle(style, style.href) }, children);
+        return figma.widget.h(
+          componentType,
+          { key: index, ...getTextStyle(style, style.href) },
+          children
+        );
       case "p":
         return (
-          <AutoLayout width="fill-parent" key={index} spacing={2} wrap direction="horizontal">
+          <AutoLayout
+            width="fill-parent"
+            key={index}
+            spacing={2}
+            wrap
+            direction="horizontal"
+          >
             {children}
           </AutoLayout>
         );
       case "blockquote":
         return (
-          <AutoLayout width="fill-parent" key={index} direction="horizontal" spacing={16}>
-            <AutoLayout width={4} height="fill-parent" fill={MD_CONST.COLOR.GRAY} />
-            <AutoLayout width="fill-parent" direction="horizontal" spacing={2} wrap>
+          <AutoLayout
+            width="fill-parent"
+            key={index}
+            direction="horizontal"
+            spacing={16}
+          >
+            <AutoLayout
+              width={4}
+              height="fill-parent"
+              fill={MD_CONST.COLOR.GRAY}
+            />
+            <AutoLayout
+              width="fill-parent"
+              direction="horizontal"
+              spacing={2}
+              wrap
+            >
               {children}
             </AutoLayout>
           </AutoLayout>
         );
       case "image":
-        const srcAttr = token?.attrs?.find(([attr]: [string, string]) => attr === 'src');
-        const src = srcAttr?.[1] || '';
-        return ImageRenderer.renderImage({
-          type: 'image',
-          src,
-        }, index)
+        const srcAttr = token?.attrs?.find(
+          ([attr]: [string, string]) => attr === "src"
+        );
+        const src = srcAttr?.[1] || "";
+        return ImageRenderer.renderImage(
+          {
+            type: "image",
+            src,
+          },
+          index
+        );
       case "hr":
         return (
           <AutoLayout
@@ -161,16 +197,17 @@ export class MarkdownTreeRenderer {
         );
       case "footnote_anchor":
         return (
-          <Text
-            key={index}
-            {...getTextStyle({ footnote: true })}
-          >
+          <Text key={index} {...getTextStyle({ footnote: true })}>
             [{token.meta.id + 1}]
           </Text>
         );
       default:
-        console.log('unsupported block component', componentType, token)
-        return <Text key={index}>Component {JSON.stringify(componentType)} not supported</Text>;
+        console.log("unsupported block component", componentType, token);
+        return (
+          <Text key={index}>
+            Component {JSON.stringify(componentType)} not supported
+          </Text>
+        );
     }
   }
 
@@ -184,25 +221,42 @@ export class MarkdownTreeRenderer {
       const token = tokens[index];
 
       switch (token.type) {
-        case 'heading_open': {
+        case "heading_open": {
           const level = Number.parseInt(token.tag.substring(1), 10);
           const newStyle = {
             ...style,
-            heading: { level }
+            heading: { level },
           };
           const result = this.tokenToTree(tokens, index + 1, newStyle);
-          elems.push(<AutoLayout direction="horizontal" width="fill-parent" wrap>{result.element}</AutoLayout>);
+          elems.push(
+            <AutoLayout direction="horizontal" width="fill-parent" wrap>
+              {result.element}
+            </AutoLayout>
+          );
           index = result.newIndex;
           break;
         }
-        case 'paragraph_open': {
+        case "paragraph_open": {
           const result = this.tokenToTree(tokens, index + 1, style);
-          elems.push(<AutoLayout direction="horizontal" width="fill-parent" wrap spacing={3}>{result.element}</AutoLayout>);
+          elems.push(
+            <AutoLayout
+              direction="horizontal"
+              width="fill-parent"
+              wrap
+              spacing={3}
+            >
+              {result.element}
+            </AutoLayout>
+          );
           index = result.newIndex;
           break;
         }
-        case 'inline': {
-          const { element } = MarkdownTreeRenderer.inlineTokenToTree(token.children, 0, style);
+        case "inline": {
+          const { element } = MarkdownTreeRenderer.inlineTokenToTree(
+            token.children,
+            0,
+            style
+          );
           elems.push(element);
           index++;
           break;
@@ -212,7 +266,7 @@ export class MarkdownTreeRenderer {
             return { element: elems, newIndex: index + 1 };
           } else if (token.type.endsWith("_open")) {
             switch (token.type) {
-              case 'footnote_block_open': {
+              case "footnote_block_open": {
                 const result = this.tokenToTree(tokens, index + 1, style);
                 elems.push(
                   <AutoLayout
@@ -233,7 +287,7 @@ export class MarkdownTreeRenderer {
                 index = result.newIndex;
                 break;
               }
-              case 'footnote_open': {
+              case "footnote_open": {
                 const result = this.tokenToTree(tokens, index + 1, style);
                 elems.push(
                   <AutoLayout
@@ -248,7 +302,12 @@ export class MarkdownTreeRenderer {
                     >
                       [{token.meta?.id + 1}]
                     </Text>
-                    <AutoLayout width="fill-parent" direction="horizontal" spacing={2} wrap>
+                    <AutoLayout
+                      width="fill-parent"
+                      direction="horizontal"
+                      spacing={2}
+                      wrap
+                    >
                       {result.element}
                     </AutoLayout>
                   </AutoLayout>
@@ -256,28 +315,36 @@ export class MarkdownTreeRenderer {
                 index = result.newIndex;
                 break;
               }
-              case 'container_success_open':
-              case 'container_info_open':
-              case 'container_warning_open':
-              case 'container_danger_open': {
+              case "container_success_open":
+              case "container_info_open":
+              case "container_warning_open":
+              case "container_danger_open": {
                 const result = this.tokenToTree(tokens, index + 1, style);
-                const bgColor = token.type === 'container_success_open'
-                  ? "#D9F9E5"
-                  : token.type === 'container_info_open'
-                  ? "#E0F2FE"
-                  : token.type === 'container_warning_open'
-                  ? "#FEF7DD"
-                  : "#FEEDED";
+                const bgColor =
+                  token.type === "container_success_open"
+                    ? "#D9F9E5"
+                    : token.type === "container_info_open"
+                    ? "#E0F2FE"
+                    : token.type === "container_warning_open"
+                    ? "#FEF7DD"
+                    : "#FEEDED";
                 elems.push(
-                  <AutoLayout key={index} width="fill-parent" direction="vertical" padding={10} fill={bgColor} spacing={8}>
+                  <AutoLayout
+                    key={index}
+                    width="fill-parent"
+                    direction="vertical"
+                    padding={10}
+                    fill={bgColor}
+                    spacing={8}
+                  >
                     {result.element}
                   </AutoLayout>
                 );
                 index = result.newIndex;
                 break;
               }
-              case 'bullet_list_open':
-              case 'ordered_list_open': {
+              case "bullet_list_open":
+              case "ordered_list_open": {
                 const isNested = token.level > 0;
                 const result = this.tokenToTree(tokens, index + 1, style);
                 if (isNested) {
@@ -307,7 +374,7 @@ export class MarkdownTreeRenderer {
                 index = result.newIndex;
                 break;
               }
-              case 'list_item_open': {
+              case "list_item_open": {
                 const result = this.tokenToTree(tokens, index + 1, style);
                 elems.push(
                   <AutoLayout
@@ -328,7 +395,7 @@ export class MarkdownTreeRenderer {
                 index = result.newIndex;
                 break;
               }
-              case 'table_open': {
+              case "table_open": {
                 const result = this.tokenToTree(tokens, index + 1, style);
                 elems.push(
                   <AutoLayout
@@ -346,8 +413,8 @@ export class MarkdownTreeRenderer {
                 index = result.newIndex;
                 break;
               }
-              case 'thead_open':
-              case 'tbody_open': {
+              case "thead_open":
+              case "tbody_open": {
                 const result = this.tokenToTree(tokens, index + 1, style);
                 elems.push(
                   <AutoLayout
@@ -361,7 +428,7 @@ export class MarkdownTreeRenderer {
                 index = result.newIndex;
                 break;
               }
-              case 'tr_open': {
+              case "tr_open": {
                 const result = this.tokenToTree(tokens, index + 1, style);
                 elems.push(
                   <AutoLayout
@@ -370,7 +437,12 @@ export class MarkdownTreeRenderer {
                     direction="horizontal"
                     stroke={MD_CONST.COLOR.GRAY}
                     strokeWidth={1}
-                    fill={token.tag === 'tr' && tokens[index - 2]?.type === 'thead_open' ? MD_CONST.COLOR.CODE_BG : undefined}
+                    fill={
+                      token.tag === "tr" &&
+                      tokens[index - 2]?.type === "thead_open"
+                        ? MD_CONST.COLOR.CODE_BG
+                        : undefined
+                    }
                   >
                     {result.element}
                   </AutoLayout>
@@ -378,23 +450,27 @@ export class MarkdownTreeRenderer {
                 index = result.newIndex;
                 break;
               }
-              case 'th_open':
-              case 'td_open': {
-                let newStyle = { ...style  }
-                if (token.type === 'th_open') {
-                  newStyle.bold = true
+              case "th_open":
+              case "td_open": {
+                let newStyle = { ...style };
+                if (token.type === "th_open") {
+                  newStyle.bold = true;
                 }
-                const align = token.attrs?.find(([attr]: [string, string]) => attr === 'style')?.[1];
-                const textAlign = align?.includes('text-align:')
-                  ? align.split('text-align:')[1].trim()
-                  : 'left';
+                const align = token.attrs?.find(
+                  ([attr]: [string, string]) => attr === "style"
+                )?.[1];
+                const textAlign = align?.includes("text-align:")
+                  ? align.split("text-align:")[1].trim()
+                  : "left";
                 const result = this.tokenToTree(tokens, index + 1, newStyle);
                 elems.push(
                   <AutoLayout
                     key={index}
                     padding={8}
                     width="fill-parent"
-                    horizontalAlignText={textAlign as "left" | "center" | "right"}
+                    horizontalAlignText={
+                      textAlign as "left" | "center" | "right"
+                    }
                   >
                     {result.element}
                   </AutoLayout>
@@ -405,14 +481,31 @@ export class MarkdownTreeRenderer {
               default: {
                 const componentType = token.tag;
                 const result = this.tokenToTree(tokens, index + 1, style);
-                elems.push(MarkdownTreeRenderer.renderBlockComponent(componentType, index, result.element, token, style));
+                elems.push(
+                  MarkdownTreeRenderer.renderBlockComponent(
+                    componentType,
+                    index,
+                    result.element,
+                    token,
+                    style
+                  )
+                );
                 index = result.newIndex;
                 break;
               }
             }
             break;
           } else {
-            elems.push(MarkdownTreeRenderer.renderBlockComponent(token.type, index, [], token, undefined, style));
+            elems.push(
+              MarkdownTreeRenderer.renderBlockComponent(
+                token.type,
+                index,
+                [],
+                token,
+                undefined,
+                style
+              )
+            );
             index++;
           }
         }
@@ -428,16 +521,19 @@ export class MarkdownTreeRenderer {
   ): { element: JSX.Element; newIndex: number } {
     const spans: JSX.Element[] = [];
     let currentStyle = { ...style };
-    let currentText = '';
+    let currentText = "";
 
     const flushText = () => {
       if (currentText) {
         spans.push(
-          <Span key={spans.length} {...getTextStyle(currentStyle, currentStyle.href)}>
+          <Span
+            key={spans.length}
+            {...getTextStyle(currentStyle, currentStyle.href)}
+          >
             {currentText}
           </Span>
         );
-        currentText = '';
+        currentText = "";
       }
     };
 
@@ -447,7 +543,7 @@ export class MarkdownTreeRenderer {
       switch (token.type) {
         case "softbreak":
           flushText();
-          spans.push(<Span key={spans.length}>{'\n'}</Span>);
+          spans.push(<Span key={spans.length}>{"\n"}</Span>);
           index++;
           break;
 
@@ -459,7 +555,10 @@ export class MarkdownTreeRenderer {
         case "code_inline":
           flushText();
           spans.push(
-            <Span key={spans.length} {...getTextStyle({ ...currentStyle, code: true })}>
+            <Span
+              key={spans.length}
+              {...getTextStyle({ ...currentStyle, code: true })}
+            >
               {token.content}
             </Span>
           );
@@ -473,7 +572,10 @@ export class MarkdownTreeRenderer {
         case "footnote_ref":
           flushText();
           spans.push(
-            <Span key={spans.length} {...getTextStyle({ ...currentStyle, footnote: true })}>
+            <Span
+              key={spans.length}
+              {...getTextStyle({ ...currentStyle, footnote: true })}
+            >
               [{token.meta.id + 1}]
             </Span>
           );
@@ -546,50 +648,50 @@ export class MarkdownTreeRenderer {
 
         case "link_open":
           flushText();
-          const hrefAttr = token.attrs?.find(([attr]) => attr === 'href');
-          currentStyle = { ...currentStyle, href: hrefAttr?.[1] || '' };
+          const hrefAttr = token.attrs?.find(([attr]) => attr === "href");
+          currentStyle = { ...currentStyle, href: hrefAttr?.[1] || "" };
           index++;
           break;
 
         default:
           if (token.type.endsWith("_close")) {
             flushText();
-            const styleKey = token.type.replace('_close', '');
+            const styleKey = token.type.replace("_close", "");
             switch (styleKey) {
-              case 'strong':
+              case "strong":
                 currentStyle = { ...currentStyle, bold: false };
                 break;
-              case 'em':
+              case "em":
                 currentStyle = { ...currentStyle, italic: false };
                 break;
-              case 's':
+              case "s":
                 currentStyle = { ...currentStyle, strikethrough: false };
                 break;
-              case 'mark':
+              case "mark":
                 currentStyle = { ...currentStyle, highlight: false };
                 break;
-              case 'ins':
+              case "ins":
                 currentStyle = { ...currentStyle, underline: false };
                 break;
-              case 'sup':
+              case "sup":
                 currentStyle = { ...currentStyle, sup: false };
                 break;
-              case 'sub':
+              case "sub":
                 currentStyle = { ...currentStyle, sub: false };
                 break;
-              case 'ruby':
+              case "ruby":
                 currentStyle = { ...currentStyle, ruby: false };
                 break;
-              case 'rt':
+              case "rt":
                 currentStyle = { ...currentStyle, rt: false };
                 break;
-              case 'link':
+              case "link":
                 currentStyle = { ...currentStyle, href: undefined };
                 break;
             }
             index++;
           } else {
-            console.log('unhandled token', token.type, token);
+            console.log("unhandled token", token.type, token);
             index++;
           }
           break;
@@ -597,6 +699,9 @@ export class MarkdownTreeRenderer {
     }
 
     flushText();
-    return { element: <Text width="fill-parent">{spans}</Text>, newIndex: index };
+    return {
+      element: <Text width="fill-parent">{spans}</Text>,
+      newIndex: index,
+    };
   }
 }
