@@ -41,6 +41,7 @@ export class MarkdownParser {
     md.use(require('markdown-it-ins'))
     md.use(require('markdown-it-sub'))
     md.use(require('markdown-it-sup'))
+    md.use(require('markdown-it-ruby'))
 
     const tokens = md.parse(markdown, {});
 
@@ -457,6 +458,38 @@ export class MarkdownParser {
               tokens,
               index + 1,
               { ...style, sub: true },
+              level + 1
+            );
+            if (level === 0) {
+              elems.push(<Text key={index}>{result.element}</Text>);
+            } else {
+              elems.push(...result.element);
+            }
+            index = result.newIndex;
+          }
+          break;
+        case "ruby_open":
+          {
+            const result = MarkdownParser.inlineTokenToTree(
+              tokens,
+              index + 1,
+              { ...style, ruby: true },
+              level + 1
+            );
+            if (level === 0) {
+              elems.push(<Text key={index}>{result.element}</Text>);
+            } else {
+              elems.push(...result.element);
+            }
+            index = result.newIndex;
+          }
+          break;
+        case "rt_open":
+          {
+            const result = MarkdownParser.inlineTokenToTree(
+              tokens,
+              index + 1,
+              { ...style, rt: true },
               level + 1
             );
             if (level === 0) {

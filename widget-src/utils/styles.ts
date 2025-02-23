@@ -14,6 +14,8 @@ export interface TextStyle {
   footnote?: boolean;
   sup?: boolean;
   sub?: boolean;
+  ruby?: boolean;
+  rt?: boolean;
 }
 
 export const getTextStyle = (style?: TextStyle, href?: string) => {
@@ -51,5 +53,6 @@ export const getTextStyle = (style?: TextStyle, href?: string) => {
     ...(style?.footnote ? { baselineOffset: 4 } : {}),
     ...(style?.sup ? { baselineOffset: 8, fontSize: fontSize * 0.8 } : {}),
     ...(style?.sub ? { baselineOffset: -4, fontSize: fontSize * 0.8 } : {}),
+    ...(style?.rt ? { baselineOffset: 12, fontSize: fontSize * 0.6 } : {}),
   };
 };
