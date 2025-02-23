@@ -1,5 +1,5 @@
 const { widget } = figma;
-const { AutoLayout, Span, Text, Image } = widget;
+const { AutoLayout, Span, Text, SVG } = widget;
 
 import { TextSegment } from "./types/text";
 import { StyledBlock, styledImage } from "./types/block";
@@ -13,6 +13,7 @@ import { ImageRenderer } from "./renderer/ImageRenderer";
 import { getTextStyle, TextStyle } from "./utils/styles";
 import { MD_CONST } from "./constants/markdown";
 import { Children } from "react";
+import { Dot } from "./components/icons";
 
 export class MarkdownParser {
   static parseBlock(markdown: string): StyledBlock[] {
@@ -263,6 +264,57 @@ export class MarkdownParser {
                       [{token.meta?.id + 1}]
                     </Text>
                     <AutoLayout width="fill-parent" direction="horizontal" spacing={2} wrap>
+                      {result.element}
+                    </AutoLayout>
+                  </AutoLayout>
+                );
+                index = result.newIndex;
+                break;
+              }
+              case 'bullet_list_open': {
+                const isNested = token.level > 0;
+                const result = this.tokenToTree(tokens, index + 1, style);
+                if (isNested) {
+                  elems.push(
+                    <AutoLayout
+                      key={index}
+                      direction="vertical"
+                      width="fill-parent"
+                      spacing={8}
+                      padding={{ left: 24 }}
+                    >
+                      {result.element}
+                    </AutoLayout>
+                  );
+                } else {
+                  elems.push(
+                    <AutoLayout
+                      key={index}
+                      direction="vertical"
+                      width="fill-parent"
+                      spacing={8}
+                    >
+                      {result.element}
+                    </AutoLayout>
+                  );
+                }
+                index = result.newIndex;
+                break;
+              }
+              case 'list_item_open': {
+                const result = this.tokenToTree(tokens, index + 1, style);
+                elems.push(
+                  <AutoLayout
+                    key={index}
+                    direction="horizontal"
+                    spacing={3}
+                    verticalAlignItems="start"
+                    width="fill-parent"
+                  >
+                    <AutoLayout padding={{ top: 8 }}>
+                      <SVG src={Dot} />
+                    </AutoLayout>
+                    <AutoLayout width="fill-parent" direction="vertical">
                       {result.element}
                     </AutoLayout>
                   </AutoLayout>
