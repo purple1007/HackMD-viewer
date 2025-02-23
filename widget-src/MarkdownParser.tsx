@@ -6,6 +6,7 @@ import { StyledBlock, styledImage } from "./types/block";
 
 import MarkdownIt from "markdown-it";
 import { full as emoji } from "markdown-it-emoji"
+import markdownitContainer from 'markdown-it-container'
 import { BlockParser } from "./parser/BlockParser";
 import { BlockRenderer } from "./renderer/BlockRenderer";
 import { ListRenderer } from "./renderer/ListRenderer";
@@ -45,6 +46,10 @@ export class MarkdownParser {
     md.use(require('markdown-it-sup'))
     md.use(require('markdown-it-ruby'))
     md.use(emoji)
+    md.use(markdownitContainer, 'success')
+    md.use(markdownitContainer, 'info')
+    md.use(markdownitContainer, 'warning')
+    md.use(markdownitContainer, 'danger')
 
     const tokens = md.parse(markdown, {});
 
@@ -266,6 +271,26 @@ export class MarkdownParser {
                     <AutoLayout width="fill-parent" direction="horizontal" spacing={2} wrap>
                       {result.element}
                     </AutoLayout>
+                  </AutoLayout>
+                );
+                index = result.newIndex;
+                break;
+              }
+              case 'container_success_open':
+              case 'container_info_open':
+              case 'container_warning_open':
+              case 'container_danger_open': {
+                const result = this.tokenToTree(tokens, index + 1, style);
+                const bgColor = token.type === 'container_success_open'
+                  ? "#D9F9E5"
+                  : token.type === 'container_info_open'
+                  ? "#E0F2FE"
+                  : token.type === 'container_warning_open'
+                  ? "#FEF7DD"
+                  : "#FEEDED";
+                elems.push(
+                  <AutoLayout key={index} width="fill-parent" direction="vertical" padding={10} fill={bgColor} spacing={8}>
+                    {result.element}
                   </AutoLayout>
                 );
                 index = result.newIndex;
