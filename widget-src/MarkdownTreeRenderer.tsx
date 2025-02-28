@@ -9,6 +9,7 @@ import { MD_CONST } from "./constants/markdown";
 import { ImageRenderer } from "./renderer/ImageRenderer";
 import { ListRenderer } from "./renderer/ListRenderer";
 import { Dot } from "./components/icons";
+import YAML from 'js-yaml';
 
 export class MarkdownTreeRenderer {
   // New function: Convert markdown-it tokens to a React-like tree and render them.
@@ -30,6 +31,8 @@ export class MarkdownTreeRenderer {
     md.use(markdownitContainer, "info");
     md.use(markdownitContainer, "warning");
     md.use(markdownitContainer, "danger");
+    md.use(require('markdown-it-front-matter'), function(fm) {
+    });
 
     const tokens = md.parse(markdown, {});
 
@@ -221,6 +224,72 @@ export class MarkdownTreeRenderer {
       const token = tokens[index];
 
       switch (token.type) {
+        case "front_matter": {
+          try {
+            let yamlData = YAML.load(token.meta);
+            const rows = Object.entries(yamlData).map(([key, value]) => {
+              const valueStr = typeof value === 'object'
+                ? JSON.stringify(value, null, 2)
+                : String(value);
+              return (
+                <AutoLayout
+                  key={key}
+                  width="fill-parent"
+                  direction="horizontal"
+                  stroke={MD_CONST.COLOR.GRAY}
+                  strokeWidth={1}
+                >
+                  <AutoLayout
+                    padding={8}
+                    width="fill-parent"
+                    fill={MD_CONST.COLOR.CODE_BG}
+                  >
+                    <Text
+                      width="fill-parent"
+                      {...getTextStyle({ bold: true })}
+                    >
+                      {key}
+                    </Text>
+                  </AutoLayout>
+                  <AutoLayout
+                    padding={8}
+                    width="fill-parent"
+                    height="fill-parent"
+                    verticalAlignItems="baseline"
+                  >
+                    <Text
+                      width="fill-parent"
+                      fontFamily="JetBrains Mono"
+                      fontSize={14}
+                      lineHeight={28}
+                    >
+                      {valueStr}
+                    </Text>
+                  </AutoLayout>
+                </AutoLayout>
+              );
+            });
+
+            elems.push(
+              <AutoLayout
+                key={index}
+                width="fill-parent"
+                direction="vertical"
+                stroke={MD_CONST.COLOR.GRAY}
+                strokeWidth={1}
+                cornerRadius={4}
+                overflow="hidden"
+              >
+                {rows}
+              </AutoLayout>
+            );
+            index++;
+          } catch (e) {
+            console.error('Failed to parse front matter:', e);
+            index++;
+          }
+          break;
+        }
         case "heading_open": {
           const level = Number.parseInt(token.tag.substring(1), 10);
           const newStyle = {
