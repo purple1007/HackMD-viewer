@@ -13,9 +13,9 @@ export class ListRenderer {
       <AutoLayout
         key={index}
         direction="vertical"
-        width={CONTAINER_SIZE.WIDTH - CONTAINER_SIZE.PADDING * 2}
-        spacing={12}
-        padding={{ top: 12, bottom: 12 }}
+        width="fill-parent"
+        spacing={6}
+        padding={{ top: block.level !== 0 ? 0 : 12, bottom: 12, left: block.level * 16 }}
       >
         {block.items?.map((item, itemIndex) => (
           <AutoLayout

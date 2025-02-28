@@ -55,6 +55,7 @@ export const getTextStyle = (style?: TextStyle, href?: string) => {
     textDecoration: textDecoration as "none" | "strikethrough" | "underline",
     fontSize: style?.footnote ? 12 : fontSize,
     lineHeight,
+    letterSpacing: style?.code ? 0 : "3%",
     fontFamily: style?.code ? "JetBrains Mono" : "Inter",
     ...(validHref ? { href } : {}),
     ...(style?.footnote ? { baselineOffset: 4 } : {}),

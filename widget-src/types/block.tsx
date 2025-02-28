@@ -27,4 +27,5 @@ export interface ListItem {
   checked?: boolean;
   ordered?: boolean;
   number?: number;
+  level: number;
 }
