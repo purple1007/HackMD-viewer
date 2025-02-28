@@ -7,8 +7,7 @@ import { full as emoji } from "markdown-it-emoji";
 import markdownitContainer from "markdown-it-container";
 import { MD_CONST } from "./constants/markdown";
 import { ImageRenderer } from "./renderer/ImageRenderer";
-import { ListRenderer } from "./renderer/ListRenderer";
-import { Dot } from "./components/icons";
+import { DotByLevel } from "./components/icons";
 import YAML from 'js-yaml';
 
 export class MarkdownTreeRenderer {
@@ -445,6 +444,9 @@ export class MarkdownTreeRenderer {
               }
               case "list_item_open": {
                 const result = this.tokenToTree(tokens, index + 1, style);
+                // Use the token.level + 1 to determine the nesting level
+                // +1 because level is 0-based but we want 1-based for our DotByLevel function
+                const listLevel = token.level + 1;
                 elems.push(
                   <AutoLayout
                     key={index}
@@ -454,7 +456,7 @@ export class MarkdownTreeRenderer {
                     width="fill-parent"
                   >
                     <AutoLayout padding={{ top: 8 }}>
-                      <SVG src={Dot} />
+                      <SVG src={DotByLevel(listLevel)} />
                     </AutoLayout>
                     <AutoLayout width="fill-parent" direction="vertical">
                       {result.element}
