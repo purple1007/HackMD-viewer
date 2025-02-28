@@ -693,6 +693,13 @@ export class MarkdownTreeRenderer {
           index++;
           break;
 
+        case "abbr_open":
+          flushText();
+          // Style abbreviations the same as underlined text
+          currentStyle = { ...currentStyle, underline: true };
+          index++;
+          break;
+
         case "sup_open":
           flushText();
           currentStyle = { ...currentStyle, sup: true };
@@ -742,6 +749,10 @@ export class MarkdownTreeRenderer {
                 currentStyle = { ...currentStyle, highlight: false };
                 break;
               case "ins":
+                currentStyle = { ...currentStyle, underline: false };
+                break;
+              case "abbr":
+                // Reset the underline style when closing an abbreviation
                 currentStyle = { ...currentStyle, underline: false };
                 break;
               case "sup":
