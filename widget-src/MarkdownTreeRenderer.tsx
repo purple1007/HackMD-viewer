@@ -614,7 +614,7 @@ export class MarkdownTreeRenderer {
       switch (token.type) {
         case "softbreak":
           flushText();
-          spans.push(<Span key={spans.length}>{"\n"}</Span>);
+          spans.push(<Span key={spans.length}>{" "}</Span>);
           index++;
           break;
 
