@@ -222,17 +222,18 @@ export class MarkdownTreeRenderer {
     while (index < tokens.length) {
       const token = tokens[index];
 
+      // Simple key using token type and index
+      const tokenKey = `${token.type}-${index}`;
+
       switch (token.type) {
         case "front_matter": {
           try {
             let yamlData = YAML.load(token.meta);
-            const rows = Object.entries(yamlData).map(([key, value]) => {
-              const valueStr = typeof value === 'object'
-                ? JSON.stringify(value, null, 2)
-                : String(value);
+            const rows = Object.entries(yamlData).map(([key, value], rowIndex) => {
+              // Simple key using property key and row index
               return (
                 <AutoLayout
-                  key={key}
+                  key={`${key}-${rowIndex}`}
                   width="fill-parent"
                   direction="horizontal"
                   stroke={MD_CONST.COLOR.GRAY}
@@ -262,7 +263,7 @@ export class MarkdownTreeRenderer {
                       fontSize={14}
                       lineHeight={28}
                     >
-                      {valueStr}
+                      {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
                     </Text>
                   </AutoLayout>
                 </AutoLayout>
@@ -271,7 +272,7 @@ export class MarkdownTreeRenderer {
 
             elems.push(
               <AutoLayout
-                key={index}
+                key={tokenKey}
                 width="fill-parent"
                 direction="vertical"
                 stroke={MD_CONST.COLOR.GRAY}
@@ -297,7 +298,7 @@ export class MarkdownTreeRenderer {
           };
           const result = this.tokenToTree(tokens, index + 1, newStyle);
           elems.push(
-            <AutoLayout direction="horizontal" width="fill-parent" wrap>
+            <AutoLayout key={tokenKey} direction="horizontal" width="fill-parent" wrap>
               {result.element}
             </AutoLayout>
           );
@@ -308,6 +309,7 @@ export class MarkdownTreeRenderer {
           const result = this.tokenToTree(tokens, index + 1, style);
           elems.push(
             <AutoLayout
+              key={tokenKey}
               direction="horizontal"
               width="fill-parent"
               wrap
@@ -323,7 +325,8 @@ export class MarkdownTreeRenderer {
           const { element } = MarkdownTreeRenderer.inlineTokenToTree(
             token.children,
             0,
-            style
+            style,
+            tokenKey // Pass tokenKey to inlineTokenToTree
           );
           elems.push(element);
           index++;
@@ -338,7 +341,7 @@ export class MarkdownTreeRenderer {
                 const result = this.tokenToTree(tokens, index + 1, style);
                 elems.push(
                   <AutoLayout
-                    key={index}
+                    key={tokenKey}
                     width="fill-parent"
                     direction="vertical"
                     spacing={8}
@@ -359,7 +362,7 @@ export class MarkdownTreeRenderer {
                 const result = this.tokenToTree(tokens, index + 1, style);
                 elems.push(
                   <AutoLayout
-                    key={index}
+                    key={tokenKey}
                     width="fill-parent"
                     direction="horizontal"
                     spacing={4}
@@ -398,7 +401,7 @@ export class MarkdownTreeRenderer {
                     : "#FEEDED";
                 elems.push(
                   <AutoLayout
-                    key={index}
+                    key={tokenKey}
                     width="fill-parent"
                     direction="vertical"
                     padding={10}
@@ -418,7 +421,7 @@ export class MarkdownTreeRenderer {
                 if (isNested) {
                   elems.push(
                     <AutoLayout
-                      key={index}
+                      key={tokenKey}
                       direction="vertical"
                       width="fill-parent"
                       spacing={8}
@@ -430,7 +433,7 @@ export class MarkdownTreeRenderer {
                 } else {
                   elems.push(
                     <AutoLayout
-                      key={index}
+                      key={tokenKey}
                       direction="vertical"
                       width="fill-parent"
                       spacing={8}
@@ -449,7 +452,7 @@ export class MarkdownTreeRenderer {
                 const listLevel = token.level + 1;
                 elems.push(
                   <AutoLayout
-                    key={index}
+                    key={tokenKey}
                     direction="horizontal"
                     spacing={3}
                     verticalAlignItems="start"
@@ -470,7 +473,7 @@ export class MarkdownTreeRenderer {
                 const result = this.tokenToTree(tokens, index + 1, style);
                 elems.push(
                   <AutoLayout
-                    key={index}
+                    key={tokenKey}
                     width="fill-parent"
                     direction="vertical"
                     stroke={MD_CONST.COLOR.GRAY}
@@ -489,7 +492,7 @@ export class MarkdownTreeRenderer {
                 const result = this.tokenToTree(tokens, index + 1, style);
                 elems.push(
                   <AutoLayout
-                    key={index}
+                    key={tokenKey}
                     width="fill-parent"
                     direction="vertical"
                   >
@@ -503,7 +506,7 @@ export class MarkdownTreeRenderer {
                 const result = this.tokenToTree(tokens, index + 1, style);
                 elems.push(
                   <AutoLayout
-                    key={index}
+                    key={tokenKey}
                     width="fill-parent"
                     direction="horizontal"
                     stroke={MD_CONST.COLOR.GRAY}
@@ -536,7 +539,7 @@ export class MarkdownTreeRenderer {
                 const result = this.tokenToTree(tokens, index + 1, newStyle);
                 elems.push(
                   <AutoLayout
-                    key={index}
+                    key={tokenKey}
                     padding={8}
                     width="fill-parent"
                     horizontalAlignText={
@@ -570,7 +573,7 @@ export class MarkdownTreeRenderer {
             elems.push(
               MarkdownTreeRenderer.renderBlockComponent(
                 token.type,
-                index,
+                index, // Use index for key
                 [],
                 token,
                 undefined,
@@ -585,20 +588,23 @@ export class MarkdownTreeRenderer {
     return { element: elems, newIndex: index };
   }
 
+  // Modify to accept a key parameter
   static inlineTokenToTree(
     tokens: any[],
     index: number = 0,
-    style: TextStyle = {}
+    style: TextStyle = {},
+    parentKey: string = ''
   ): { element: JSX.Element; newIndex: number } {
     const spans: JSX.Element[] = [];
     let currentStyle = { ...style };
     let currentText = "";
+    let spanCounter = 0;
 
     const flushText = () => {
       if (currentText) {
         spans.push(
           <Span
-            key={spans.length}
+            key={`${parentKey}-span-${spanCounter++}`}
             {...getTextStyle(currentStyle, currentStyle.href)}
           >
             {currentText}
@@ -614,7 +620,7 @@ export class MarkdownTreeRenderer {
       switch (token.type) {
         case "softbreak":
           flushText();
-          spans.push(<Span key={spans.length}>{" "}</Span>);
+          spans.push(<Span key={`${parentKey}-span-${spanCounter++}`}>{" "}</Span>);
           index++;
           break;
 
@@ -627,7 +633,7 @@ export class MarkdownTreeRenderer {
           flushText();
           spans.push(
             <Span
-              key={spans.length}
+              key={`${parentKey}-span-${spanCounter++}`}
               {...getTextStyle({ ...currentStyle, code: true })}
             >
               {token.content}
@@ -644,7 +650,7 @@ export class MarkdownTreeRenderer {
           flushText();
           spans.push(
             <Span
-              key={spans.length}
+              key={`${parentKey}-span-${spanCounter++}`}
               {...getTextStyle({ ...currentStyle, footnote: true })}
             >
               [{token.meta.id + 1}]
@@ -656,7 +662,7 @@ export class MarkdownTreeRenderer {
         case "emoji":
           flushText();
           spans.push(
-            <Span key={spans.length} {...getTextStyle(currentStyle)}>
+            <Span key={`${parentKey}-span-${spanCounter++}`} {...getTextStyle(currentStyle)}>
               {token.content}
             </Span>
           );
@@ -782,7 +788,7 @@ export class MarkdownTreeRenderer {
 
     flushText();
     return {
-      element: <Text width="fill-parent">{spans}</Text>,
+      element: <Text key={parentKey} width="fill-parent">{spans}</Text>,
       newIndex: index,
     };
   }
