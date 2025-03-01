@@ -20,6 +20,18 @@
   "dependencies": {
     "@hackmd/api": "^1.2.0",
     "dompurify": "^3.2.3",
+    "js-yaml": "^4.1.0",
+    "markdown-it": "14.1.0",
+    "markdown-it-abbr": "^2.0.0",
+    "markdown-it-container": "^4.0.0",
+    "markdown-it-emoji": "^3.0.0",
+    "markdown-it-footnote": "^4.0.0",
+    "markdown-it-front-matter": "^0.2.4",
+    "markdown-it-ins": "^4.0.0",
+    "markdown-it-mark": "^4.0.0",
+    "markdown-it-ruby": "^1.1.2",
+    "markdown-it-sub": "^2.0.0",
+    "markdown-it-sup": "^2.0.0",
     "marked": "^15.0.6",
     "react": "^17.0.0",
     "react-dom": "^17.0.0"

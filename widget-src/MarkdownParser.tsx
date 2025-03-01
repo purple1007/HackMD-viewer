@@ -1,4 +1,3 @@
-import { TextSegment } from "./types/text";
 import { StyledBlock, styledImage } from "./types/block";
 
 import { BlockParser } from "./parser/BlockParser";
@@ -10,7 +9,6 @@ export class MarkdownParser {
   static parseBlock(markdown: string): StyledBlock[] {
     return BlockParser.parseBlock(markdown);
   }
-
   static renderBlock(block: StyledBlock, index: number) {
     if (block.type === "list") {
       return ListRenderer.renderList(block, index);

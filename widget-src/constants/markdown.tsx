@@ -14,6 +14,7 @@ export const MD_CONST = {
     HIGHLIGHT: "#DFA424",
     GRAY: "#ADADAD",
     ERROR: "#FF0000",
+    CODE_BG: "#F4F4F5",
   },
 } as const;
 

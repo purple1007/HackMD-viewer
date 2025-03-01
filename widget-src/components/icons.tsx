@@ -13,6 +13,26 @@ export const Dot = `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" 
 </svg>
 `;
 
+export const DotPrimary = `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="7" cy="7" r="3" fill="#232323"/>
+</svg>
+`;
+
+export const DotSecondary = `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="7" cy="7" r="2.5" fill="#565656" stroke="#565656" stroke-width="0.5"/>
+</svg>
+`;
+
+export const DotTertiary = `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="7" cy="7" r="2" fill="none" stroke="#757575" stroke-width="1"/>
+</svg>
+`;
+
+export const DotQuaternary = `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="5" y="5" width="4" height="4" fill="#8A8A8A"/>
+</svg>
+`;
+
 export const WarningDiamond = `<svg width='22' height='22' viewBox='0 0 22 22' fill='none' xmlns='http://www.w3.org/2000/svg'>
 <path d='M11 5.75C11.1989 5.75 11.3897 5.82902 11.5304 5.96967C11.671 6.11032 11.75 6.30109 11.75 6.5V11.75C11.75 11.9489 11.671 12.1397 11.5304 12.2803C11.3897 12.421 11.1989 12.5 11 12.5C10.8011 12.5 10.6104 12.421 10.4697 12.2803C10.3291 12.1397 10.25 11.9489 10.25 11.75V6.5C10.25 6.30109 10.3291 6.11032 10.4697 5.96967C10.6104 5.82902 10.8011 5.75 11 5.75ZM9.87504 15.125C9.87504 15.3475 9.94102 15.565 10.0646 15.75C10.1882 15.935 10.364 16.0792 10.5695 16.1644C10.7751 16.2495 11.0013 16.2718 11.2195 16.2284C11.4377 16.185 11.6382 16.0778 11.7955 15.9205C11.9529 15.7632 12.06 15.5627 12.1034 15.3445C12.1468 15.1262 12.1245 14.9 12.0394 14.6945C11.9543 14.4889 11.8101 14.3132 11.6251 14.1896C11.44 14.066 11.2225 14 11 14C10.7017 14 10.4155 14.1185 10.2045 14.3295C9.99356 14.5405 9.87504 14.8266 9.87504 15.125ZM21.5 11C21.5006 11.1965 21.4622 11.3911 21.387 11.5726C21.3119 11.7541 21.2015 11.9189 21.0622 12.0575L12.0575 21.0631C11.7765 21.3425 11.3963 21.4993 11 21.4993C10.6038 21.4993 10.2236 21.3425 9.94254 21.0631L0.942537 12.0575C0.66316 11.7765 0.506348 11.3963 0.506348 11C0.506348 10.6037 0.66316 10.2235 0.942537 9.9425L9.94722 0.936876C10.2283 0.657499 10.6084 0.500687 11.0047 0.500687C11.401 0.500687 11.7812 0.657499 12.0622 0.936876L21.0669 9.9425C21.2053 10.0815 21.3149 10.2464 21.3892 10.4279C21.4635 10.6094 21.5012 10.8039 21.5 11ZM20 11L11 2L2.00004 11L11 20L20 11Z' fill='#FF0000'/>
 </svg>`;
@@ -61,3 +81,29 @@ export const LinkIcon = `<svg width='18' height='19' viewBox='0 0 18 19' fill='n
 </clipPath>
 </defs>
 </svg>`;
+
+/**
+ * Returns the appropriate dot icon based on the list nesting level.
+ * Cycles back to primary style when level >= 5.
+ *
+ * @param level The nesting level of the list item (1-based)
+ * @returns The SVG string for the appropriate dot style
+ */
+export const DotByLevel = (level: number): string => {
+  // Use modulo 4 to cycle through the 4 dot styles (1-4)
+  // When level is 5+, it will start over from style 1
+  const normalizedLevel = ((level - 1) % 4) + 1;
+
+  switch (normalizedLevel) {
+    case 1:
+      return DotPrimary;
+    case 2:
+      return DotSecondary;
+    case 3:
+      return DotTertiary;
+    case 4:
+      return DotQuaternary;
+    default:
+      return DotPrimary; // fallback, though this shouldn't happen
+  }
+};
