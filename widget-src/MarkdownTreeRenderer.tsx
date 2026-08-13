@@ -711,7 +711,7 @@ export class MarkdownTreeRenderer {
       pieces.push(
         <AutoLayout
           key={`${parentKey}-box-${pieces.length}`}
-          fill={MD_CONST.COLOR.CODE_BG}
+          fill={MD_CONST.COLOR.INLINE_CODE_BG}
           cornerRadius={4}
           padding={{ horizontal: 5, vertical: 1 }}
           verticalAlignItems="center"
