@@ -64,17 +64,17 @@ const header = (
 const messageForStatus = (status: number, retryAfter?: string) => {
   switch (status) {
     case 401:
-      return "HackMD API token 無效或已被撤銷，請重新設定。";
+      return "Your HackMD API token is invalid or was revoked. Update it from the gear icon in the toolbar.";
     case 403:
-      return "這個 API token 沒有讀取這篇筆記的權限。";
+      return "This API token doesn't have access to this note.";
     case 404:
-      return "找不到這篇筆記，請確認網址是否正確。";
+      return "Note not found. Check the URL and try again.";
     case 429:
       return retryAfter
-        ? `已達 HackMD API 速率限制，請於 ${retryAfter} 秒後再試。`
-        : "已達 HackMD API 速率限制，請稍後再試。";
+        ? `HackMD rate limit reached. Try again in ${retryAfter}s.`
+        : "HackMD rate limit reached. Try again shortly.";
     default:
-      return `HackMD API 回應錯誤（${status}）。`;
+      return `HackMD API error (${status}). Try again.`;
   }
 };
 
@@ -89,9 +89,9 @@ interface ApiNote {
 }
 
 const CORS_BLOCKED =
-  "無法從 Figma widget 呼叫 HackMD API：api.hackmd.io 沒有回傳 " +
-  "Access-Control-Allow-Origin，瀏覽器會擋掉這個跨來源請求。" +
-  "目前只有公開筆記可以顯示。";
+  "Private notes can't be loaded yet: Figma widgets can't reach the HackMD " +
+  "API (api.hackmd.io doesn't send CORS headers). Only public notes are " +
+  "supported for now.";
 
 /** How long any single request may run before we give up on it. */
 const REQUEST_TIMEOUT_MS = 8000;
@@ -99,7 +99,7 @@ const REQUEST_TIMEOUT_MS = 8000;
 /**
  * Rejects if `promise` hasn't settled within `ms`. A CORS-blocked request in
  * the widget sandbox can stay pending for a very long time before the network
- * layer fails — without this the widget would sit on "載入中…" and look frozen.
+ * layer fails — without this the widget would sit on "Loading…" and look frozen.
  * The underlying fetch may still be in flight; we just stop waiting on it.
  */
 const withTimeout = <T>(promise: Promise<T>, message: string): Promise<T> =>
@@ -275,7 +275,7 @@ const fetchPublic = async (ref: NoteRef): Promise<FetchedNote> => {
     try {
       response = await withTimeout(
         fetch(`${url}/download?t=${Date.now()}`),
-        "連線 HackMD 逾時，請稍後再試。"
+        "Timed out reaching HackMD. Try again."
       );
     } catch (error) {
       // A private note's 403 (no CORS headers) and a timeout both land here; a
@@ -293,7 +293,9 @@ const fetchPublic = async (ref: NoteRef): Promise<FetchedNote> => {
   }
 
   if (lastStatus && lastStatus !== 403 && lastStatus !== 404) {
-    throw new HackMDError(`無法載入這篇筆記（${lastStatus}）。`);
+    throw new HackMDError(
+      `Couldn't load this note (${lastStatus}). Try again.`
+    );
   }
   throw new HackMDError(NOT_PUBLIC);
 };
@@ -340,16 +342,14 @@ export const fetchNote = async (
 
 /** The message shown when a note can't be read without (working) API access. */
 const notPublicMessage = (ref: NoteRef, hasToken: boolean): string => {
-  const causes = ["這篇筆記不是公開的"];
+  const base = hasToken
+    ? // A token is set but the API is unreachable from a widget today.
+      "Couldn't load this note. It isn't public, and Figma widgets can't reach the HackMD API yet, so private notes aren't supported for now."
+    : "Couldn't load this note. Make sure it's shared with \"Anyone with the link\" or published, or add an API token from the gear icon for private notes.";
+
+  // A custom permalink URL has no reachable download route; the short link does.
   if (ref.owner) {
-    causes.push(
-      `或是網址用了自訂 permalink（/@${ref.owner}/my-note），請改用短網址（/@${ref.owner}/xxxxxxxx）`
-    );
+    return `${base} If you're using a custom permalink, try the note's short link (hackmd.io/@${ref.owner}/xxxxxxxx) instead.`;
   }
-  return (
-    `無法載入這篇筆記：${causes.join("，")}。` +
-    (hasToken
-      ? "已設定 API token，但 Figma widget 目前無法呼叫 api.hackmd.io（該網域未回傳 CORS 標頭），所以還讀不到私人筆記。"
-      : "請把瀏覽權限改成「知道連結的人可讀」、發布這篇筆記，或改用短網址。")
-  );
+  return base;
 };

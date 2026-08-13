@@ -105,14 +105,14 @@ export const HackMDButton = ({ onClick }: HackMDButtonProps) => {
       >
         <AutoLayout direction="vertical" spacing={4} width="fill-parent">
           <Text
-            name="Past your hackmd note into Figma"
+            name="Title"
             fill="#747474"
             width="fill-parent"
             fontFamily="Inter"
             fontSize={18}
             fontWeight={500}
           >
-            Paste your HackMD note into Figma
+            View a HackMD note in Figma
           </Text>
           <Text
             name="Private note hint"
@@ -122,8 +122,8 @@ export const HackMDButton = ({ onClick }: HackMDButtonProps) => {
             fontSize={12}
             lineHeight={18}
           >
-            Public notes work as-is. For private or team notes, add your HackMD
-            API token.
+            Public notes load right away. For private or team notes, add an API
+            token from the toolbar.
           </Text>
         </AutoLayout>
       </AutoLayout>

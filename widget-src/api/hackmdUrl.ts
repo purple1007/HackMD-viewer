@@ -50,7 +50,9 @@ export const parseHackMDUrl = (urlString: string): NoteRef => {
     urlString.trim()
   );
   if (!match) {
-    throw new HackMDError("不是有效的 HackMD 連結");
+    throw new HackMDError(
+      "Enter a valid HackMD note URL (e.g. https://hackmd.io/xxxxxxxx)."
+    );
   }
 
   const segments = match[1]
@@ -60,16 +62,25 @@ export const parseHackMDUrl = (urlString: string): NoteRef => {
     .filter((segment) => VIEW_MODES.indexOf(segment) === -1);
 
   if (segments[0] === "s") {
-    if (!segments[1]) throw new HackMDError("不是有效的 HackMD 連結");
+    if (!segments[1])
+      throw new HackMDError(
+        "Enter a valid HackMD note URL (e.g. https://hackmd.io/xxxxxxxx)."
+      );
     return { slug: segments[1], published: true };
   }
 
   if (segments[0] && segments[0].charAt(0) === "@") {
-    if (!segments[1]) throw new HackMDError("不是有效的 HackMD 連結");
+    if (!segments[1])
+      throw new HackMDError(
+        "Enter a valid HackMD note URL (e.g. https://hackmd.io/xxxxxxxx)."
+      );
     return { owner: segments[0].slice(1), slug: segments[1], published: false };
   }
 
-  if (!segments[0]) throw new HackMDError("不是有效的 HackMD 連結");
+  if (!segments[0])
+    throw new HackMDError(
+      "Enter a valid HackMD note URL (e.g. https://hackmd.io/xxxxxxxx)."
+    );
   return { slug: segments[0], published: false };
 };
 

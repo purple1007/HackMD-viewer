@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "./App.css";
 import { parseHackMDUrl } from "../widget-src/api/hackmdUrl";
 
@@ -14,6 +14,7 @@ function App() {
   const [error, setError] = useState("");
   const [url, setUrl] = useState("");
   const [token, setToken] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -26,6 +27,21 @@ function App() {
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
+  // Resize the iframe to fit its content so there's no dead space below.
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const report = () =>
+      post({
+        type: "resize",
+        height: Math.ceil(el.getBoundingClientRect().height),
+      });
+    report();
+    const observer = new ResizeObserver(report);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const handleSubmit = () => {
     try {
       parseHackMDUrl(url);
@@ -34,61 +50,69 @@ function App() {
       // fetch, so URL and token can't be two racing messages.
       post({ type: "url", value: url, token: token.trim() || undefined });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "發生未知錯誤");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again."
+      );
     }
   };
 
   if (view === "token") {
     return (
-      <div className="App">
-        <p>HackMD API token</p>
-        <input
-          className="input"
-          type="password"
-          placeholder={hasToken ? "已設定，輸入以覆蓋" : "API token..."}
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-        />
+      <div className="App" ref={rootRef}>
+        <div className="field">
+          <label className="label">HackMD API token</label>
+          <input
+            className="input"
+            type="password"
+            placeholder={
+              hasToken ? "Enter a new token to replace it" : "Paste your token"
+            }
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+          />
+        </div>
         <p className="hint">
-          在 HackMD 的 Settings → API 建立 token。Token 只會存在你自己的電腦上，
-          不會寫進 Figma 檔案，也不會分享給協作者。
+          Create one in HackMD under Settings → API. Stored on this device only
+          — never saved to the Figma file or shared with collaborators.
         </p>
-        <button onClick={() => post({ type: "token", value: token.trim() })}>
-          Save token
-        </button>
-        {hasToken && (
-          <button
-            className="secondary"
-            onClick={() => post({ type: "clear-token" })}
-          >
-            Remove token
+        <div className="actions">
+          <button onClick={() => post({ type: "token", value: token.trim() })}>
+            Save token
           </button>
-        )}
+          {hasToken && (
+            <button
+              className="secondary"
+              onClick={() => post({ type: "clear-token" })}
+            >
+              Remove token
+            </button>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="App">
-      <p>HackMD URL:</p>
-      <input
-        className="input"
-        type="text"
-        placeholder="HackMD URL..."
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-      />
+    <div className="App" ref={rootRef}>
+      <div className="field">
+        <label className="label">HackMD note URL</label>
+        <input
+          className="input"
+          type="text"
+          placeholder="https://hackmd.io/xxxxxxxx"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+        />
+      </div>
       <p className="hint">
         {hasToken
-          ? "API token 已設定 ✓（可在工具列的齒輪圖示更新）"
-          : "公開筆記可直接載入。私人筆記請先用工具列的齒輪圖示設定 API token。"}
+          ? "API token saved. Manage it from the gear icon in the toolbar."
+          : "Public notes load right away. For private notes, add a token from the gear icon in the toolbar."}
       </p>
-      {error && (
-        <div className="error">
-          <p>{error}</p>
-        </div>
-      )}
-      <button onClick={handleSubmit}>Get started</button>
+      {error && <p className="error">{error}</p>}
+      <button onClick={handleSubmit}>Load note</button>
     </div>
   );
 }

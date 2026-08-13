@@ -17,6 +17,8 @@ const WIDTH_OPTIONS = [
   { option: "960", label: "960px" },
 ];
 
+const UI_WIDTH = 320;
+
 /** Opens the iframe and resolves once it posts a message back (or is closed). */
 const showSettingsUI = (
   view: "url" | "token",
@@ -25,12 +27,17 @@ const showSettingsUI = (
 ) =>
   new Promise<void>((resolve) => {
     figma.showUI(__html__, {
-      width: 320,
-      height: view === "token" ? 280 : 220,
-      title: view === "token" ? "HackMD API token" : "HackMD URL setting",
+      width: UI_WIDTH,
+      height: view === "token" ? 240 : 180,
+      title: view === "token" ? "HackMD API token" : "Load a HackMD note",
     });
     figma.ui.postMessage({ type: "init", view, hasToken });
     figma.ui.onmessage = async (msg) => {
+      // The iframe reports its content height so we can trim dead space.
+      if (msg.type === "resize" && typeof msg.height === "number") {
+        figma.ui.resize(UI_WIDTH, Math.max(120, Math.min(600, msg.height)));
+        return;
+      }
       await onMessage(msg);
       resolve();
     };
@@ -75,7 +82,7 @@ function HackMDViewer() {
       setError(
         err instanceof HackMDError
           ? err.message
-          : "無法讀取文件，請確認網址連結或瀏覽權限。"
+          : "Couldn't load the note. Check the URL or your access permissions."
       );
     } finally {
       setLoading(false);
@@ -122,7 +129,7 @@ function HackMDViewer() {
       {
         itemType: "action" as const,
         propertyName: "token",
-        tooltip: "設定 HackMD API token",
+        tooltip: "API token",
         icon: GearIcon,
       },
       ...(url
@@ -130,7 +137,7 @@ function HackMDViewer() {
             {
               itemType: "action" as const,
               propertyName: "refresh",
-              tooltip: "重新整理",
+              tooltip: "Refresh",
               icon: RefreshIcon,
             },
           ]
@@ -138,7 +145,7 @@ function HackMDViewer() {
       {
         itemType: "action" as const,
         propertyName: "open-url",
-        tooltip: "載入其他筆記",
+        tooltip: "Load another note",
         icon: NewNoteIcon,
       },
       { itemType: "separator" as const },
@@ -174,7 +181,7 @@ function HackMDViewer() {
 
   const renderContent = () => {
     if (loading) {
-      return <Text>載入中...</Text>;
+      return <Text>Loading…</Text>;
     }
 
     if (error) {
@@ -190,7 +197,6 @@ function HackMDViewer() {
 
   return (
     <AutoLayout direction="vertical" width="hug-contents">
-      {/* 顯示按鈕 */}
       {!url ? (
         <HackMDButton onClick={openUrlSettings} />
       ) : (
