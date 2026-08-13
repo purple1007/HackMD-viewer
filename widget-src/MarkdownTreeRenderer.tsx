@@ -662,10 +662,21 @@ export class MarkdownTreeRenderer {
     parentKey: string = "",
     align?: CellAlign
   ): { element: FigmaDeclarativeNode; newIndex: number } {
-    const spans: (string | number | FigmaVirtualNode<"span">)[] = [];
+    let spans: (string | number | FigmaVirtualNode<"span">)[] = [];
     let currentStyle = { ...style };
     let currentText = "";
     let spanCounter = 0;
+
+    // A `Span` can only carry text styling, never a background or border. So
+    // inline code / highlight / kbd — which need a fill — are rendered as small
+    // AutoLayout boxes. As soon as one appears we switch from a single wrapping
+    // Text to a horizontal, wrapping row of pieces (text runs + boxes). Content
+    // with no such box keeps the single-Text path, so its wrapping is unchanged.
+    const pieces: FigmaDeclarativeNode[] = [];
+    // While inside a highlight/kbd span we buffer its plain text here.
+    let bgMode: null | "highlight" | "kbd" = null;
+    let bgText = "";
+    let bgStyle: TextStyle = {};
 
     const flushText = () => {
       if (currentText) {
@@ -679,6 +690,77 @@ export class MarkdownTreeRenderer {
         );
         currentText = "";
       }
+    };
+
+    // Move the accumulated text spans into `pieces` as one text run. Used only
+    // once a box forces the multi-piece layout.
+    const flushSpans = () => {
+      flushText();
+      if (spans.length) {
+        pieces.push(
+          <Text key={`${parentKey}-run-${pieces.length}`} width="hug-contents">
+            {spans}
+          </Text>
+        );
+        spans = [];
+      }
+    };
+
+    const pushCodeBox = (content: string) => {
+      flushSpans();
+      pieces.push(
+        <AutoLayout
+          key={`${parentKey}-box-${pieces.length}`}
+          fill={MD_CONST.COLOR.CODE_BG}
+          cornerRadius={4}
+          padding={{ horizontal: 5, vertical: 1 }}
+          verticalAlignItems="center"
+        >
+          <Text
+            fontFamily="JetBrains Mono"
+            fontSize={14}
+            fill={MD_CONST.COLOR.BLACK}
+          >
+            {content}
+          </Text>
+        </AutoLayout>
+      );
+    };
+
+    const pushHighlightBox = (text: string, style: TextStyle) => {
+      pieces.push(
+        <AutoLayout
+          key={`${parentKey}-box-${pieces.length}`}
+          fill={MD_CONST.COLOR.HIGHLIGHT_BG}
+          cornerRadius={3}
+          padding={{ horizontal: 3 }}
+          verticalAlignItems="center"
+        >
+          <Text {...getTextStyle(style)}>{text}</Text>
+        </AutoLayout>
+      );
+    };
+
+    const pushKbdBox = (text: string) => {
+      pieces.push(
+        <AutoLayout
+          key={`${parentKey}-box-${pieces.length}`}
+          fill={MD_CONST.COLOR.KBD_BG}
+          stroke={MD_CONST.COLOR.KBD_BORDER}
+          strokeWidth={1}
+          cornerRadius={4}
+          padding={{ horizontal: 6, vertical: 1 }}
+          verticalAlignItems="center"
+        >
+          <Text
+            fontFamily="JetBrains Mono"
+            fontSize={13}
+            fill={MD_CONST.COLOR.BLACK}
+          >
+            {text}
+          </Text>
+        </AutoLayout>
+      );
     };
 
     // HackMD `@username` mentions arrive as plain text in the raw markdown, so
@@ -720,20 +802,14 @@ export class MarkdownTreeRenderer {
           break;
 
         case "text":
-          appendText(token.content);
+          // Inside a highlight/kbd span, text is buffered for its box.
+          if (bgMode) bgText += token.content;
+          else appendText(token.content);
           index++;
           break;
 
         case "code_inline":
-          flushText();
-          spans.push(
-            <Span
-              key={`${parentKey}-span-${spanCounter++}`}
-              {...getTextStyle({ ...currentStyle, code: true })}
-            >
-              {token.content}
-            </Span>
-          );
+          pushCodeBox(token.content);
           index++;
           break;
 
@@ -762,6 +838,21 @@ export class MarkdownTreeRenderer {
           break;
 
         case "html_inline": {
+          const html = token.content.trim();
+          // <kbd>…</kbd> becomes a keycap box.
+          if (/^<kbd>$/i.test(html)) {
+            flushSpans();
+            bgMode = "kbd";
+            bgText = "";
+            index++;
+            break;
+          }
+          if (/^<\/kbd>$/i.test(html)) {
+            pushKbdBox(bgText);
+            bgMode = null;
+            index++;
+            break;
+          }
           const text = htmlToText(token.content);
           if (text) currentText += text;
           else if (/<br\s*\/?>/i.test(token.content)) currentText += "\n";
@@ -814,8 +905,10 @@ export class MarkdownTreeRenderer {
           break;
 
         case "mark_open":
-          flushText();
-          currentStyle = { ...currentStyle, highlight: true };
+          flushSpans();
+          bgMode = "highlight";
+          bgText = "";
+          bgStyle = { ...currentStyle };
           index++;
           break;
 
@@ -880,7 +973,8 @@ export class MarkdownTreeRenderer {
                 currentStyle = { ...currentStyle, strikethrough: false };
                 break;
               case "mark":
-                currentStyle = { ...currentStyle, highlight: false };
+                pushHighlightBox(bgText, bgStyle);
+                bgMode = null;
                 break;
               case "ins":
                 currentStyle = { ...currentStyle, underline: false };
@@ -914,15 +1008,42 @@ export class MarkdownTreeRenderer {
     }
 
     flushText();
+
+    // No inline box appeared: keep the single-Text path (proper text wrapping).
+    if (pieces.length === 0) {
+      return {
+        element: (
+          <Text
+            key={parentKey}
+            width="fill-parent"
+            horizontalAlignText={align ?? "left"}
+          >
+            {spans}
+          </Text>
+        ),
+        newIndex: index,
+      };
+    }
+
+    // A box forced the multi-piece layout: lay the runs and boxes out in a
+    // wrapping row. Text runs no longer break mid-word, which is fine for the
+    // short lines that carry inline code / highlight / kbd.
+    flushSpans();
     return {
       element: (
-        <Text
+        <AutoLayout
           key={parentKey}
           width="fill-parent"
-          horizontalAlignText={align ?? "left"}
+          direction="horizontal"
+          wrap
+          spacing={0}
+          verticalAlignItems="center"
+          horizontalAlignItems={
+            align === "center" ? "center" : align === "right" ? "end" : "start"
+          }
         >
-          {spans}
-        </Text>
+          {pieces}
+        </AutoLayout>
       ),
       newIndex: index,
     };
