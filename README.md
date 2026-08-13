@@ -8,44 +8,47 @@ If you have any suggestions for improving the code, please feel free to report t
 
 ### Which notes can be rendered
 
-A widget's `fetch` is a real browser request from a **null-origin iframe**, so it
-can only read endpoints that send `Access-Control-Allow-Origin: *`
+The deciding factor is **whether a note can be downloaded without a token** —
+that is, it is shared with "Anyone with the link" or published. This has nothing
+to do with whether it's a personal or a team note: a public team note renders,
+and a private personal note does not.
+
+Why: a widget's `fetch` is a real browser request from a **null-origin iframe**,
+so it can only read endpoints that send `Access-Control-Allow-Origin: *`
 ([Figma docs](https://developers.figma.com/docs/plugins/making-network-requests/)).
 `networkAccess.allowedDomains` is a whitelist, not a proxy. What HackMD sends:
 
-| endpoint                                | status | CORS      |
-| --------------------------------------- | ------ | --------- |
-| `hackmd.io/{shortId}/download`          | 200    | `ACAO: *` |
-| `hackmd.io/@owner/{shortId}/download`   | 200    | `ACAO: *` |
-| `hackmd.io/s/{publishId}/download`      | 200    | `ACAO: *` |
-| `hackmd.io/@owner/{permalink}/download` | 404    | no route  |
-| `hackmd.io/@owner/{permalink}`          | 200    | no ACAO   |
-| `api.hackmd.io/v1/*`                    | —      | no ACAO   |
+| endpoint                                 | status  | CORS      |
+| ---------------------------------------- | ------- | --------- |
+| `hackmd.io/{shortId}/download` (public)  | 200     | `ACAO: *` |
+| `hackmd.io/{shortId}/download` (private) | 403     | no ACAO   |
+| `hackmd.io/s/{publishId}/download`       | 200     | `ACAO: *` |
+| `api.hackmd.io/v1/*` (needs a token)     | 400 / — | no ACAO   |
 
-So today the viewer renders **notes readable via a link, or published notes**,
-addressed by their **short URL** (`/xxxxxxxx` or `/@owner/xxxxxxxx`). A custom
-permalink has no CORS-reachable route — use the note's short URL instead.
+So a public / link-readable / published note is read straight from `/download`
+(which sends CORS headers) with no token involved. A private note's `/download`
+returns 403, leaving only the token-authenticated `api.hackmd.io` — which the
+browser blocks. See below.
 
-### Reading private notes (blocked on the API)
+### Private notes are not supported yet (known limitation)
 
-`widget-src/api/hackmd.ts` implements the authenticated path — `GET /notes/{id}`,
-plus permalink resolution via `GET /teams` and `GET /teams/{path}/notes` — and it
-is wired up behind the token setting. It cannot run yet: `api.hackmd.io` returns
-no `Access-Control-Allow-Origin`, and because the `Authorization` header forces a
-CORS preflight, its `OPTIONS` response (currently `400`, no CORS headers) blocks
-the request before it is sent.
+Reading a private note requires the authenticated API (`api.hackmd.io`, called
+with your token). That path is fully implemented in `widget-src/api/hackmd.ts`
+— `GET /notes/{id}` for personal notes, and `GET /teams` →
+`GET /teams/{path}/notes` → `GET /teams/{path}/notes/{id}` for team notes — but
+it **cannot run inside a widget today**: `api.hackmd.io` returns no
+`Access-Control-Allow-Origin`, and the `Authorization` header forces a CORS
+preflight that it answers with `400`. The browser blocks the request before it
+is sent, so private notes (personal or team) can't be loaded. The widget reports
+this clearly instead of failing with a raw CORS error.
 
-**To unblock it, `api.hackmd.io` needs to send:**
-
-- `Access-Control-Allow-Origin: *` on responses, and
-- `Access-Control-Allow-Headers: Authorization` on the preflight, answering
-  `OPTIONS` with a `2xx`.
-
-`*` is safe here because the API authenticates with a bearer token in a header
-rather than cookies, so no credentials are attached to a cross-origin request.
-Once those headers ship, any note the token can read will render with no client
-change; until then the widget explains why a private note failed instead of
-showing a CORS error.
+This is a deliberate limitation for now, not an open work item. Unblocking it
+would require `api.hackmd.io` to send `Access-Control-Allow-Origin: *` and answer
+the `OPTIONS` preflight with a `2xx` carrying
+`Access-Control-Allow-Headers: Authorization`. `*` is safe there because the API
+authenticates with a bearer header rather than cookies, so no credentials ride
+along on a cross-origin request. If that ever ships, the existing client works
+with no changes.
 
 When a token is set it is stored with `figma.clientStorage`, so it stays on your
 own machine: it is never written into the Figma file and collaborators never see
@@ -53,8 +56,10 @@ it.
 
 ### ⚠️ Current Technical Limitations
 
-- Private notes cannot be read yet — see above
-- Notes must be addressed by short URL, not by a custom permalink
+- Private notes can't be read yet, personal or team alike — only notes that
+  download without a token (public / link-readable / published) render
+- Use a note's short URL (`/xxxxxxxx` or `/@owner/xxxxxxxx`), not a custom
+  permalink — a custom permalink has no download route
 - Images are shown as links rather than embedded — open the original note to
   view them
 - Raw HTML blocks are rendered as plain text
