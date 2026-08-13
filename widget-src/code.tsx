@@ -8,6 +8,7 @@ import { clearToken, getToken, setToken } from "./utils/token";
 
 import { HackMDButton } from "./components/hackMDButton";
 import { ContentLayout } from "./components/contentLayout";
+import { GearIcon, NewNoteIcon, RefreshIcon } from "./components/icons";
 
 /** Opens the iframe and resolves once it posts a message back (or is closed). */
 const showSettingsUI = (
@@ -39,7 +40,12 @@ function HackMDViewer() {
   const [noteId, setNoteId] = useSyncedState<string>("noteId", "");
   const [teamPath, setTeamPath] = useSyncedState<string>("teamPath", "");
 
-  const fetchHackMDContent = async (hackmdUrl: string) => {
+  const fetchHackMDContent = async (
+    hackmdUrl: string,
+    // The cached canonical ids only apply to a refresh of the same note; a
+    // freshly pasted URL must resolve from scratch or it could reuse them.
+    resolved?: { noteId?: string; teamPath?: string }
+  ) => {
     try {
       setLoading(true);
       setError("");
@@ -47,10 +53,7 @@ function HackMDViewer() {
       const ref = parseHackMDUrl(hackmdUrl);
       // The token is per-user and only readable from an async context.
       const token = await getToken();
-      const note = await fetchNote(ref, token, {
-        noteId: noteId || undefined,
-        teamPath: teamPath || undefined,
-      });
+      const note = await fetchNote(ref, token, resolved);
 
       setContent(note.content);
       setTitle(note.title || "");
@@ -80,32 +83,66 @@ function HackMDViewer() {
       } else {
         return;
       }
-      if (url) await fetchHackMDContent(url);
+      // Re-fetch with the current note using the cached ids.
+      if (url) {
+        await fetchHackMDContent(url, {
+          noteId: noteId || undefined,
+          teamPath: teamPath || undefined,
+        });
+      }
+    });
+  };
+
+  // Opens the URL panel to load a note. Used both by the empty-state card and by
+  // the toolbar. A new URL is a fresh note, so the cached ids are dropped.
+  const openUrlSettings = async () => {
+    const hasToken = Boolean(await getToken());
+    await showSettingsUI("url", hasToken, async (msg) => {
+      if (msg.type !== "url" || !msg.value) return;
+      // Persist the token first: fetchHackMDContent reads it back.
+      if (msg.token) await setToken(msg.token);
+      setUrl(msg.value);
+      setNoteId("");
+      setTeamPath("");
+      await fetchHackMDContent(msg.value);
     });
   };
 
   usePropertyMenu(
     [
+      {
+        itemType: "action" as const,
+        propertyName: "token",
+        tooltip: "設定 HackMD API token",
+        icon: GearIcon,
+      },
       ...(url
         ? [
             {
               itemType: "action" as const,
               propertyName: "refresh",
               tooltip: "重新整理",
+              icon: RefreshIcon,
             },
           ]
         : []),
       {
         itemType: "action" as const,
-        propertyName: "token",
-        tooltip: "設定 HackMD API token",
+        propertyName: "open-url",
+        tooltip: "載入其他筆記",
+        icon: NewNoteIcon,
       },
     ],
     async ({ propertyName }: { propertyName: string }) => {
       if (propertyName === "refresh" && url) {
-        await fetchHackMDContent(url);
+        await fetchHackMDContent(url, {
+          noteId: noteId || undefined,
+          teamPath: teamPath || undefined,
+        });
       } else if (propertyName === "token") {
         await openTokenSettings();
+      } else if (propertyName === "open-url") {
+        await openUrlSettings();
       }
     }
   );
@@ -130,18 +167,7 @@ function HackMDViewer() {
     <AutoLayout direction="vertical" width="hug-contents">
       {/* 顯示按鈕 */}
       {!url ? (
-        <HackMDButton
-          onClick={async () => {
-            const hasToken = Boolean(await getToken());
-            await showSettingsUI("url", hasToken, async (msg) => {
-              if (msg.type !== "url" || !msg.value) return;
-              // Persist the token first: fetchHackMDContent reads it back.
-              if (msg.token) await setToken(msg.token);
-              setUrl(msg.value);
-              await fetchHackMDContent(msg.value);
-            });
-          }}
-        />
+        <HackMDButton onClick={openUrlSettings} />
       ) : (
         <ContentLayout lastSyncTime={lastSyncTime} url={url} title={title}>
           {renderContent()}
