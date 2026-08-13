@@ -164,36 +164,39 @@ export const ContentLayout = ({
             Viewer
           </Text>
         </AutoLayout>
-        <AutoLayout
-          name="Link Button"
-          fill="#7B75E1"
-          cornerRadius={8}
-          overflow="visible"
-          spacing={2}
-          padding={{
-            vertical: 4,
-            horizontal: 12,
-          }}
-          horizontalAlignItems="end"
-          verticalAlignItems="center"
-        >
-          <Frame
-            name="ArrowSquareOut"
-            strokeWidth={0.125}
-            width={18}
-            height={18}
+        {/* Pasted markdown has no source note, so no "View Original" link. */}
+        {url ? (
+          <AutoLayout
+            name="Link Button"
+            fill="#7B75E1"
+            cornerRadius={8}
+            overflow="visible"
+            spacing={2}
+            padding={{
+              vertical: 4,
+              horizontal: 12,
+            }}
+            horizontalAlignItems="end"
+            verticalAlignItems="center"
           >
-            <SVG
-              name="Vector_Vector_Vector_Vector"
-              height={18}
+            <Frame
+              name="ArrowSquareOut"
+              strokeWidth={0.125}
               width={18}
-              src={LinkIcon}
-            />
-          </Frame>
-          <Text name="Link Text" fill="#FFF" fontFamily="Inter" href={url}>
-            View Original Note{" "}
-          </Text>
-        </AutoLayout>
+              height={18}
+            >
+              <SVG
+                name="Vector_Vector_Vector_Vector"
+                height={18}
+                width={18}
+                src={LinkIcon}
+              />
+            </Frame>
+            <Text name="Link Text" fill="#FFF" fontFamily="Inter" href={url}>
+              View Original Note{" "}
+            </Text>
+          </AutoLayout>
+        ) : null}
       </AutoLayout>
       <AutoLayout
         name="Body"
@@ -243,31 +246,43 @@ export const ContentLayout = ({
           verticalAlignItems="center"
         >
           <Line length="fill-parent" stroke="#D9D9D9" />
-          <AutoLayout
-            name="Frame 9"
-            overflow="visible"
-            spacing={4}
-            verticalAlignItems="center"
-          >
+          {url ? (
+            <AutoLayout
+              name="Frame 9"
+              overflow="visible"
+              spacing={4}
+              verticalAlignItems="center"
+            >
+              <Text
+                name="Sync Label"
+                fill={MD_CONST.COLOR.GRAY}
+                fontFamily="Inter"
+                fontSize={14}
+                fontWeight={500}
+              >
+                Last Synced:{" "}
+              </Text>
+              <Text
+                name="Sync Date"
+                fill={MD_CONST.COLOR.BLACK}
+                fontFamily="Inter"
+                fontSize={14}
+                fontWeight={500}
+              >
+                {lastSyncTime || "Not synced yet"}
+              </Text>
+            </AutoLayout>
+          ) : (
             <Text
-              name="Sync Label"
+              name="Source Label"
               fill={MD_CONST.COLOR.GRAY}
               fontFamily="Inter"
               fontSize={14}
               fontWeight={500}
             >
-              Last Synced:{" "}
+              Pasted Markdown
             </Text>
-            <Text
-              name="Sync Date"
-              fill={MD_CONST.COLOR.BLACK}
-              fontFamily="Inter"
-              fontSize={14}
-              fontWeight={500}
-            >
-              {lastSyncTime || "Not synced yet"}
-            </Text>
-          </AutoLayout>
+          )}
         </AutoLayout>
       </AutoLayout>
     </AutoLayout>

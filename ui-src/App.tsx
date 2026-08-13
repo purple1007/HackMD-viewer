@@ -14,6 +14,7 @@ function App() {
   const [error, setError] = useState("");
   const [url, setUrl] = useState("");
   const [token, setToken] = useState("");
+  const [markdown, setMarkdown] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,6 +57,15 @@ function App() {
           : "Something went wrong. Please try again."
       );
     }
+  };
+
+  const handleRenderMarkdown = () => {
+    if (!markdown.trim()) {
+      setError("Paste some Markdown to render.");
+      return;
+    }
+    setError("");
+    post({ type: "markdown", value: markdown });
   };
 
   if (view === "token") {
@@ -111,8 +121,25 @@ function App() {
           ? "API token saved. Manage it from the gear icon in the toolbar."
           : "Public notes load right away. For private notes, add a token from the gear icon in the toolbar."}
       </p>
-      {error && <p className="error">{error}</p>}
       <button onClick={handleSubmit}>Load note</button>
+
+      <div className="divider">
+        <span>or</span>
+      </div>
+
+      <div className="field">
+        <label className="label">Paste Markdown</label>
+        <textarea
+          className="input textarea"
+          placeholder="# Title&#10;Paste Markdown to render it directly…"
+          value={markdown}
+          onChange={(e) => setMarkdown(e.target.value)}
+        />
+      </div>
+      {error && <p className="error">{error}</p>}
+      <button className="secondary" onClick={handleRenderMarkdown}>
+        Render Markdown
+      </button>
     </div>
   );
 }

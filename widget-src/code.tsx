@@ -109,11 +109,26 @@ function HackMDViewer() {
     });
   };
 
-  // Opens the URL panel to load a note. Used both by the empty-state card and by
-  // the toolbar. A new URL is a fresh note, so the cached ids are dropped.
+  // Shows pasted markdown directly, with no HackMD source behind it.
+  const showPastedMarkdown = (markdown: string) => {
+    setUrl("");
+    setNoteId("");
+    setTeamPath("");
+    setTitle("");
+    setError("");
+    setLastSyncTime("");
+    setContent(markdown);
+  };
+
+  // Opens the input panel. Used both by the empty-state card and by the toolbar.
+  // The user can load a note by URL or paste markdown to render directly.
   const openUrlSettings = async () => {
     const hasToken = Boolean(await getToken());
     await showSettingsUI("url", hasToken, async (msg) => {
+      if (msg.type === "markdown" && (msg.value || "").trim()) {
+        showPastedMarkdown(msg.value);
+        return;
+      }
       if (msg.type !== "url" || !msg.value) return;
       // Persist the token first: fetchHackMDContent reads it back.
       if (msg.token) await setToken(msg.token);
@@ -195,9 +210,12 @@ function HackMDViewer() {
     return null;
   };
 
+  // Empty only when there's neither a loaded note (url) nor pasted markdown.
+  const isEmpty = !url && !content;
+
   return (
     <AutoLayout direction="vertical" width="hug-contents">
-      {!url ? (
+      {isEmpty ? (
         <HackMDButton onClick={openUrlSettings} />
       ) : (
         <ContentLayout

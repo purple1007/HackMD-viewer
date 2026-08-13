@@ -89,3 +89,28 @@ button.secondary:hover {
   font-size: 12px;
   line-height: 1.4;
 }
+
+.textarea {
+  min-height: 96px;
+  max-height: 240px;
+  resize: vertical;
+  line-height: 1.45;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #a0a0a0;
+  font-size: 11px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e0e0e0;
+}
