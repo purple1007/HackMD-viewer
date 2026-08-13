@@ -5,10 +5,10 @@ import { LinkIcon, LogoIcon, LogoWordMark } from "./icons";
 import { MD_CONST } from "../constants/markdown";
 
 interface HackMDButtonProps {
-  onSuccess: (url: string, noteId: string) => Promise<void>;
+  onClick: () => Promise<void>;
 }
 
-export const HackMDButton = ({ onSuccess }: HackMDButtonProps) => {
+export const HackMDButton = ({ onClick }: HackMDButtonProps) => {
   return (
     <AutoLayout
       name="Frame7"
@@ -103,16 +103,29 @@ export const HackMDButton = ({ onSuccess }: HackMDButtonProps) => {
         horizontalAlignItems="center"
         verticalAlignItems="center"
       >
-        <Text
-          name="Past your hackmd note into Figma"
-          fill="#747474"
-          width="fill-parent"
-          fontFamily="Inter"
-          fontSize={18}
-          fontWeight={500}
-        >
-          Paste your HackMD note into Figma
-        </Text>
+        <AutoLayout direction="vertical" spacing={4} width="fill-parent">
+          <Text
+            name="Past your hackmd note into Figma"
+            fill="#747474"
+            width="fill-parent"
+            fontFamily="Inter"
+            fontSize={18}
+            fontWeight={500}
+          >
+            Paste your HackMD note into Figma
+          </Text>
+          <Text
+            name="Private note hint"
+            fill={MD_CONST.COLOR.GRAY}
+            width="fill-parent"
+            fontFamily="Inter"
+            fontSize={12}
+            lineHeight={18}
+          >
+            Public notes work as-is. For private or team notes, add your HackMD
+            API token.
+          </Text>
+        </AutoLayout>
       </AutoLayout>
 
       <AutoLayout
@@ -131,21 +144,7 @@ export const HackMDButton = ({ onSuccess }: HackMDButtonProps) => {
         width="fill-parent"
         horizontalAlignItems="center"
         verticalAlignItems="center"
-        onClick={() => {
-          return new Promise<void>((resolve) => {
-            figma.showUI(__html__, {
-              width: 280,
-              height: 200,
-              title: "HackMD URL setting",
-            });
-            figma.ui.onmessage = async (msg) => {
-              if (msg.type === "url" && msg.value) {
-                await onSuccess(msg.value, msg.noteId);
-                resolve();
-              }
-            };
-          });
-        }}
+        onClick={onClick}
       >
         <Text
           name="Get started"

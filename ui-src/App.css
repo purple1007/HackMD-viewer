@@ -37,3 +37,19 @@ button:hover {
   padding: 0px;
   text-align: left;
 }
+
+.hint {
+  color: #747474;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+button.secondary {
+  background-color: transparent;
+  color: #747474;
+  border: 1px solid #dddddd;
+}
+
+button.secondary:hover {
+  background-color: #f0f0f0;
+}

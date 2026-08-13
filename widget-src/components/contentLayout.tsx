@@ -7,12 +7,15 @@ import { LinkIcon, LogoIconWhite, LogoWordMarkWhite } from "./icons";
 interface ContentLayoutProps {
   children: FigmaDeclarativeNode;
   url: string;
+  /** Note title reported by the API; blank for public downloads. */
+  title?: string;
   lastSyncTime?: string;
 }
 
 export const ContentLayout = ({
   children,
   url,
+  title,
   lastSyncTime,
 }: ContentLayoutProps) => {
   return (
@@ -205,7 +208,26 @@ export const ContentLayout = ({
           horizontalAlignItems="center"
           verticalAlignItems="center"
         >
-          <AutoLayout name="Content" width="fill-parent">
+          <AutoLayout
+            name="Content"
+            width="fill-parent"
+            direction="vertical"
+            spacing={12}
+          >
+            {title ? (
+              <Text
+                name="Note Title"
+                width="fill-parent"
+                fill={MD_CONST.COLOR.BLACK}
+                fontFamily="Inter"
+                fontSize={12}
+                fontWeight={500}
+                textCase="upper"
+                letterSpacing="6%"
+              >
+                {title}
+              </Text>
+            ) : null}
             {children}
           </AutoLayout>
         </AutoLayout>
