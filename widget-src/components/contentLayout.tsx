@@ -10,6 +10,8 @@ interface ContentLayoutProps {
   /** Note title reported by the API; blank for public downloads. */
   title?: string;
   lastSyncTime?: string;
+  /** Overall widget width in px, chosen from the toolbar. */
+  width?: number;
 }
 
 export const ContentLayout = ({
@@ -17,6 +19,7 @@ export const ContentLayout = ({
   url,
   title,
   lastSyncTime,
+  width = 620,
 }: ContentLayoutProps) => {
   return (
     <AutoLayout
@@ -26,7 +29,7 @@ export const ContentLayout = ({
       cornerRadius={16}
       strokeWidth={2}
       direction="vertical"
-      width={620}
+      width={width}
       verticalAlignItems="center"
       horizontalAlignItems="center"
     >

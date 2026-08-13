@@ -10,6 +10,13 @@ import { HackMDButton } from "./components/hackMDButton";
 import { ContentLayout } from "./components/contentLayout";
 import { GearIcon, NewNoteIcon, RefreshIcon } from "./components/icons";
 
+/** Widget width choices offered in the toolbar (value in px, as a string). */
+const WIDTH_OPTIONS = [
+  { option: "600", label: "600px" },
+  { option: "860", label: "860px" },
+  { option: "960", label: "960px" },
+];
+
 /** Opens the iframe and resolves once it posts a message back (or is closed). */
 const showSettingsUI = (
   view: "url" | "token",
@@ -39,6 +46,8 @@ function HackMDViewer() {
   // Canonical ids from a previous API lookup, so a refresh is a single request.
   const [noteId, setNoteId] = useSyncedState<string>("noteId", "");
   const [teamPath, setTeamPath] = useSyncedState<string>("teamPath", "");
+  // Widget width in px, chosen from the toolbar dropdown.
+  const [width, setWidth] = useSyncedState("width", "600");
 
   const fetchHackMDContent = async (
     hackmdUrl: string,
@@ -132,8 +141,22 @@ function HackMDViewer() {
         tooltip: "載入其他筆記",
         icon: NewNoteIcon,
       },
+      { itemType: "separator" as const },
+      {
+        itemType: "dropdown" as const,
+        propertyName: "width",
+        tooltip: "Width",
+        selectedOption: width,
+        options: WIDTH_OPTIONS,
+      },
     ],
-    async ({ propertyName }: { propertyName: string }) => {
+    async ({
+      propertyName,
+      propertyValue,
+    }: {
+      propertyName: string;
+      propertyValue?: string;
+    }) => {
       if (propertyName === "refresh" && url) {
         await fetchHackMDContent(url, {
           noteId: noteId || undefined,
@@ -143,6 +166,8 @@ function HackMDViewer() {
         await openTokenSettings();
       } else if (propertyName === "open-url") {
         await openUrlSettings();
+      } else if (propertyName === "width" && propertyValue) {
+        setWidth(propertyValue);
       }
     }
   );
@@ -169,7 +194,12 @@ function HackMDViewer() {
       {!url ? (
         <HackMDButton onClick={openUrlSettings} />
       ) : (
-        <ContentLayout lastSyncTime={lastSyncTime} url={url} title={title}>
+        <ContentLayout
+          lastSyncTime={lastSyncTime}
+          url={url}
+          title={title}
+          width={Number(width)}
+        >
           {renderContent()}
         </ContentLayout>
       )}
