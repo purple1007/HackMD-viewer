@@ -7,5 +7,9 @@
   "containsWidget": true,
   "main": "dist/code.js",
   "ui": "dist/index.html",
-  "widgetApi": "1.0.0"
+  "widgetApi": "1.0.0",
+  "networkAccess": {
+    "allowedDomains": ["https://api.hackmd.io", "https://hackmd.io"],
+    "reasoning": "Fetches note content from the HackMD API and the public note download endpoint."
+  }
 }
