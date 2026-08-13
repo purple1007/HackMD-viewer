@@ -101,7 +101,9 @@ const resolveByOwner = async (
       );
       if (listed.ok) {
         const notes: ApiNote[] = await listed.json();
-        const note = notes.find((candidate) => matchesSlug(candidate, ref.slug));
+        const note = notes.find((candidate) =>
+          matchesSlug(candidate, ref.slug)
+        );
         if (note) return { noteId: note.id, teamPath: team.path };
       }
     }
@@ -160,7 +162,10 @@ const fetchViaApi = async (
   }
   if (direct.status === 401 || direct.status === 429) {
     throw new HackMDError(
-      messageForStatus(direct.status, header(direct.headersObject, "Retry-After")),
+      messageForStatus(
+        direct.status,
+        header(direct.headersObject, "Retry-After")
+      ),
       true
     );
   }
@@ -175,7 +180,10 @@ const fetchViaApi = async (
       return toFetchedNote(await response.json(), owned.teamPath);
     }
     throw new HackMDError(
-      messageForStatus(response.status, header(response.headersObject, "Retry-After")),
+      messageForStatus(
+        response.status,
+        header(response.headersObject, "Retry-After")
+      ),
       response.status === 403
     );
   }

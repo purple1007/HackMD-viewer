@@ -243,47 +243,54 @@ export class MarkdownTreeRenderer {
       switch (token.type) {
         case "front_matter": {
           try {
-            const yamlData = (YAML.load(token.meta) ?? {}) as Record<string, unknown>;
-            const rows = Object.entries(yamlData).map(([key, value], rowIndex) => {
-              // Simple key using property key and row index
-              return (
-                <AutoLayout
-                  key={`${key}-${rowIndex}`}
-                  width="fill-parent"
-                  direction="horizontal"
-                  stroke={MD_CONST.COLOR.GRAY}
-                  strokeWidth={1}
-                >
+            const yamlData = (YAML.load(token.meta) ?? {}) as Record<
+              string,
+              unknown
+            >;
+            const rows = Object.entries(yamlData).map(
+              ([key, value], rowIndex) => {
+                // Simple key using property key and row index
+                return (
                   <AutoLayout
-                    padding={8}
+                    key={`${key}-${rowIndex}`}
                     width="fill-parent"
-                    fill={MD_CONST.COLOR.CODE_BG}
+                    direction="horizontal"
+                    stroke={MD_CONST.COLOR.GRAY}
+                    strokeWidth={1}
                   >
-                    <Text
+                    <AutoLayout
+                      padding={8}
                       width="fill-parent"
-                      {...getTextStyle({ bold: true })}
+                      fill={MD_CONST.COLOR.CODE_BG}
                     >
-                      {key}
-                    </Text>
-                  </AutoLayout>
-                  <AutoLayout
-                    padding={8}
-                    width="fill-parent"
-                    height="fill-parent"
-                    verticalAlignItems="baseline"
-                  >
-                    <Text
+                      <Text
+                        width="fill-parent"
+                        {...getTextStyle({ bold: true })}
+                      >
+                        {key}
+                      </Text>
+                    </AutoLayout>
+                    <AutoLayout
+                      padding={8}
                       width="fill-parent"
-                      fontFamily="JetBrains Mono"
-                      fontSize={14}
-                      lineHeight={28}
+                      height="fill-parent"
+                      verticalAlignItems="baseline"
                     >
-                      {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
-                    </Text>
+                      <Text
+                        width="fill-parent"
+                        fontFamily="JetBrains Mono"
+                        fontSize={14}
+                        lineHeight={28}
+                      >
+                        {typeof value === "object"
+                          ? JSON.stringify(value, null, 2)
+                          : String(value)}
+                      </Text>
+                    </AutoLayout>
                   </AutoLayout>
-                </AutoLayout>
-              );
-            });
+                );
+              }
+            );
 
             elems.push(
               <AutoLayout
@@ -300,7 +307,7 @@ export class MarkdownTreeRenderer {
             );
             index++;
           } catch (e) {
-            console.error('Failed to parse front matter:', e);
+            console.error("Failed to parse front matter:", e);
             index++;
           }
           break;
@@ -313,7 +320,12 @@ export class MarkdownTreeRenderer {
           };
           const result = this.tokenToTree(tokens, index + 1, newStyle, ctx);
           elems.push(
-            <AutoLayout key={tokenKey} direction="horizontal" width="fill-parent" wrap>
+            <AutoLayout
+              key={tokenKey}
+              direction="horizontal"
+              width="fill-parent"
+              wrap
+            >
               {result.element}
             </AutoLayout>
           );
@@ -678,7 +690,7 @@ export class MarkdownTreeRenderer {
       switch (token.type) {
         case "softbreak":
           flushText();
-          spans.push(<Span key={`${parentKey}-span-${spanCounter++}`}>{" "}</Span>);
+          spans.push(<Span key={`${parentKey}-span-${spanCounter++}`}> </Span>);
           index++;
           break;
 
@@ -703,8 +715,9 @@ export class MarkdownTreeRenderer {
         case "image": {
           flushText();
           const src =
-            token.attrs?.find(([attr]: [string, string]) => attr === "src")?.[1] ||
-            "";
+            token.attrs?.find(
+              ([attr]: [string, string]) => attr === "src"
+            )?.[1] || "";
           const alt = (token.content || "").trim();
           spans.push(
             <Span
@@ -747,7 +760,10 @@ export class MarkdownTreeRenderer {
         case "emoji":
           flushText();
           spans.push(
-            <Span key={`${parentKey}-span-${spanCounter++}`} {...getTextStyle(currentStyle)}>
+            <Span
+              key={`${parentKey}-span-${spanCounter++}`}
+              {...getTextStyle(currentStyle)}
+            >
               {token.content}
             </Span>
           );
