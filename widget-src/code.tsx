@@ -1,17 +1,8 @@
 const { widget } = figma;
-const {
-  AutoLayout,
-  Input,
-  Text,
-  useSyncedState,
-  usePropertyMenu,
-  useEffect,
-  useWidgetId,
-} = widget;
+const { AutoLayout, Text, useSyncedState, usePropertyMenu } = widget;
 
-import { MarkdownParser } from "./MarkdownParser";
 import { MarkdownTreeRenderer } from "./MarkdownTreeRenderer";
-import { CONTAINER_SIZE, MD_CONST } from "./constants/markdown";
+import { MD_CONST } from "./constants/markdown";
 import { getHackMDId } from "./utils/hackMDId";
 
 import { HackMDButton } from "./components/hackMDButton";
@@ -26,8 +17,6 @@ function HackMDViewer() {
 
   const fetchHackMDContent = async (hackmdUrl: string, noteId?: string) => {
     try {
-      const requestTime = new Date().toUTCString();
-      setLastSyncTime(requestTime);
       setLoading(true);
       setError("");
 
@@ -42,6 +31,7 @@ function HackMDViewer() {
 
       const content = await publicResponse.text();
       await setContent(content);
+      setLastSyncTime(new Date().toUTCString());
     } catch (err) {
       const error = err as Error;
       setError(error.message || "無法讀取文件，請確認網址連結或瀏覽權限");
@@ -50,22 +40,22 @@ function HackMDViewer() {
     }
   };
 
-  if (!url === false) {
-    usePropertyMenu(
-      [
-        {
-          itemType: "action",
-          propertyName: "refresh",
-          tooltip: "重新整理",
-        },
-      ],
-      async ({ propertyName }: { propertyName: string }) => {
-        if (propertyName === "refresh" && url) {
-          await fetchHackMDContent(url);
-        }
+  usePropertyMenu(
+    url
+      ? [
+          {
+            itemType: "action",
+            propertyName: "refresh",
+            tooltip: "重新整理",
+          },
+        ]
+      : [],
+    async ({ propertyName }: { propertyName: string }) => {
+      if (propertyName === "refresh" && url) {
+        await fetchHackMDContent(url);
       }
-    );
-  }
+    }
+  );
 
   const renderContent = () => {
     if (loading) {
@@ -78,18 +68,8 @@ function HackMDViewer() {
 
     if (content) {
       return MarkdownTreeRenderer.renderMarkdownAsTree(content);
-
-      const blocks = MarkdownParser.parseBlock(content);
-      console.log("URL:", url);
-      console.log("Parsed blocks:", blocks);
-      return (
-        <AutoLayout direction="vertical" width="fill-parent">
-          {blocks.map((block, index) =>
-            MarkdownParser.renderBlock(block, index)
-          )}
-        </AutoLayout>
-      );
     }
+
     return null;
   };
 

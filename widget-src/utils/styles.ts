@@ -41,8 +41,14 @@ export const getTextStyle = (style?: TextStyle, href?: string) => {
       ] * 1.6
     : 28;
 
+  const fontWeight: WidgetJSX.FontWeight = style?.heading
+    ? "extra-bold"
+    : style?.bold
+    ? "bold"
+    : "normal";
+
   return {
-    fontWeight: style?.heading ? "extra-bold" : style?.bold ? "bold" : "normal",
+    fontWeight,
     fill:
       href || style?.footnote
         ? MD_CONST.COLOR.PRIMARY

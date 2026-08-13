@@ -5,7 +5,8 @@ import { MD_CONST } from "../constants/markdown";
 import { LinkIcon, LogoIconWhite, LogoWordMarkWhite } from "./icons";
 
 interface ContentLayoutProps {
-  children: React.ReactNode;
+  children: FigmaDeclarativeNode;
+  url: string;
   lastSyncTime?: string;
 }
 

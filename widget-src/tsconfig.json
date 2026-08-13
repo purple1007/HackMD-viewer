@@ -6,8 +6,17 @@
     "module": "ES2015",
     "moduleResolution": "node",
     "target": "es6",
-    "lib": ["es6"],
+    "lib": [
+      "es2017"
+    ],
     "strict": true,
-    "typeRoots": ["./node_modules/@types", "./node_modules/@figma"]
-  }
+    "typeRoots": [
+      "../node_modules/@figma"
+    ],
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "."
+  ]
 }

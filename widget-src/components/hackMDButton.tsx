@@ -132,7 +132,7 @@ export const HackMDButton = ({ onSuccess }: HackMDButtonProps) => {
         horizontalAlignItems="center"
         verticalAlignItems="center"
         onClick={() => {
-          return new Promise((resolve) => {
+          return new Promise<void>((resolve) => {
             figma.showUI(__html__, {
               width: 280,
               height: 200,

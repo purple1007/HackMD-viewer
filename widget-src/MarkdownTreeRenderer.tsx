@@ -5,33 +5,41 @@ import { getTextStyle, TextStyle } from "./utils/styles";
 import MarkdownIt from "markdown-it";
 import { full as emoji } from "markdown-it-emoji";
 import markdownitContainer from "markdown-it-container";
+import markdownitAbbr from "markdown-it-abbr";
+import markdownitFootnote from "markdown-it-footnote";
+import markdownitMark from "markdown-it-mark";
+import markdownitIns from "markdown-it-ins";
+import markdownitSub from "markdown-it-sub";
+import markdownitSup from "markdown-it-sup";
+import markdownitRuby from "markdown-it-ruby";
+import markdownitFrontMatter from "markdown-it-front-matter";
 import { MD_CONST } from "./constants/markdown";
 import { ImageRenderer } from "./renderer/ImageRenderer";
 import { DotByLevel } from "./components/icons";
-import YAML from 'js-yaml';
+import YAML from "js-yaml";
 
 export class MarkdownTreeRenderer {
   // New function: Convert markdown-it tokens to a React-like tree and render them.
-  static renderMarkdownAsTree(markdown: string): JSX.Element {
+  static renderMarkdownAsTree(markdown: string): FigmaDeclarativeNode {
     const md = new MarkdownIt("default", {
       html: true,
       typographer: true,
     });
 
-    md.use(require("markdown-it-abbr"));
-    md.use(require("markdown-it-footnote"));
-    md.use(require("markdown-it-mark"));
-    md.use(require("markdown-it-ins"));
-    md.use(require("markdown-it-sub"));
-    md.use(require("markdown-it-sup"));
-    md.use(require("markdown-it-ruby"));
+    md.use(markdownitAbbr);
+    md.use(markdownitFootnote);
+    md.use(markdownitMark);
+    md.use(markdownitIns);
+    md.use(markdownitSub);
+    md.use(markdownitSup);
+    md.use(markdownitRuby);
     md.use(emoji);
     md.use(markdownitContainer, "success");
     md.use(markdownitContainer, "info");
     md.use(markdownitContainer, "warning");
     md.use(markdownitContainer, "danger");
-    md.use(require('markdown-it-front-matter'), function(fm) {
-    });
+    // The front matter body is rendered from the token instead of the callback.
+    md.use(markdownitFrontMatter, () => {});
 
     const tokens = md.parse(markdown, {});
 
@@ -93,10 +101,7 @@ export class MarkdownTreeRenderer {
       []
     );
 
-    console.log(processedTokens, "processedTokens");
-
     const treeResult = this.tokenToTree(processedTokens, 0);
-    console.log(treeResult, "treeResult");
     return (
       <AutoLayout direction="vertical" width="fill-parent" spacing={10}>
         {treeResult.element}
@@ -107,10 +112,10 @@ export class MarkdownTreeRenderer {
   static renderBlockComponent(
     componentType: string,
     index: number,
-    children: JSX.Element[],
+    children: FigmaDeclarativeNode[],
     token?: any,
     style: TextStyle = {}
-  ): JSX.Element {
+  ): FigmaDeclarativeNode {
     switch (componentType) {
       case "Text":
         return figma.widget.h(
@@ -204,7 +209,6 @@ export class MarkdownTreeRenderer {
           </Text>
         );
       default:
-        console.log("unsupported block component", componentType, token);
         return (
           <Text key={index}>
             Component {JSON.stringify(componentType)} not supported
@@ -217,8 +221,8 @@ export class MarkdownTreeRenderer {
     tokens: any[],
     index: number = 0,
     style: TextStyle = {}
-  ): { element: JSX.Element[]; newIndex: number } {
-    const elems: JSX.Element[] = [];
+  ): { element: FigmaDeclarativeNode[]; newIndex: number } {
+    const elems: FigmaDeclarativeNode[] = [];
     while (index < tokens.length) {
       const token = tokens[index];
 
@@ -228,7 +232,7 @@ export class MarkdownTreeRenderer {
       switch (token.type) {
         case "front_matter": {
           try {
-            let yamlData = YAML.load(token.meta);
+            const yamlData = (YAML.load(token.meta) ?? {}) as Record<string, unknown>;
             const rows = Object.entries(yamlData).map(([key, value], rowIndex) => {
               // Simple key using property key and row index
               return (
@@ -542,8 +546,13 @@ export class MarkdownTreeRenderer {
                     key={tokenKey}
                     padding={8}
                     width="fill-parent"
-                    horizontalAlignText={
-                      textAlign as "left" | "center" | "right"
+                    verticalAlignItems="start"
+                    horizontalAlignItems={
+                      textAlign === "center"
+                        ? "center"
+                        : textAlign === "right"
+                        ? "end"
+                        : "start"
                     }
                   >
                     {result.element}
@@ -576,7 +585,6 @@ export class MarkdownTreeRenderer {
                 index, // Use index for key
                 [],
                 token,
-                undefined,
                 style
               )
             );
@@ -594,8 +602,8 @@ export class MarkdownTreeRenderer {
     index: number = 0,
     style: TextStyle = {},
     parentKey: string = ''
-  ): { element: JSX.Element; newIndex: number } {
-    const spans: JSX.Element[] = [];
+  ): { element: FigmaDeclarativeNode; newIndex: number } {
+    const spans: (string | number | FigmaVirtualNode<"span">)[] = [];
     let currentStyle = { ...style };
     let currentText = "";
     let spanCounter = 0;
@@ -732,7 +740,9 @@ export class MarkdownTreeRenderer {
 
         case "link_open":
           flushText();
-          const hrefAttr = token.attrs?.find(([attr]) => attr === "href");
+          const hrefAttr = token.attrs?.find(
+            ([attr]: [string, string]) => attr === "href"
+          );
           currentStyle = { ...currentStyle, href: hrefAttr?.[1] || "" };
           index++;
           break;
@@ -779,7 +789,6 @@ export class MarkdownTreeRenderer {
             }
             index++;
           } else {
-            console.log("unhandled token", token.type, token);
             index++;
           }
           break;

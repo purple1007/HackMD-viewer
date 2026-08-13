@@ -1,7 +1,7 @@
 const { widget } = figma;
 const { AutoLayout, Image, Text, Span, Frame, SVG } = widget;
 import { WarningDiamond } from "../components/icons";
-import { styledImage } from "../types/block";
+import { styledImage } from "../types/image";
 import { MD_CONST } from "../constants/markdown";
 
 export class ImageRenderer {
@@ -108,7 +108,6 @@ export class ImageRenderer {
           width="fill-parent"
           height={300}
           cornerRadius={6}
-          scaleMode="FIT"
         />
       </AutoLayout>
     );
