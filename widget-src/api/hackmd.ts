@@ -199,6 +199,15 @@ const toFetchedNote = (note: ApiNote, teamPath?: string): FetchedNote => ({
   teamPath: teamPath || note.teamPath || undefined,
 });
 
+const statusError = (response: FetchResponse, fatal = false) =>
+  new HackMDError(
+    messageForStatus(
+      response.status,
+      header(response.headersObject, "Retry-After")
+    ),
+    fatal
+  );
+
 /** Fetches raw markdown through the authenticated API. */
 const fetchViaApi = async (
   token: string,
@@ -207,35 +216,27 @@ const fetchViaApi = async (
 ): Promise<FetchedNote> => {
   // A previous fetch already resolved the canonical id — one request is enough.
   if (resolved?.noteId) {
-    const response = await apiGet(
-      token,
-      notePath(resolved.noteId, resolved.teamPath)
-    );
-    if (response.ok) {
-      return toFetchedNote(await response.json(), resolved.teamPath);
+    try {
+      const response = await apiGet(
+        token,
+        notePath(resolved.noteId, resolved.teamPath)
+      );
+      if (response.ok) {
+        return toFetchedNote(await response.json(), resolved.teamPath);
+      }
+      if (response.status === 401) throw statusError(response, true);
+    } catch (error) {
+      if (error instanceof HackMDError && error.fatal) throw error;
+      // A stale id or a transient error — fall through to a fresh lookup.
     }
-    if (response.status === 401) {
-      throw new HackMDError(messageForStatus(401), true);
-    }
-    // The note may have moved; fall through to a fresh lookup.
   }
 
-  const direct = await apiGet(token, `/notes/${encodeURIComponent(ref.slug)}`);
-  if (direct.ok) {
-    return toFetchedNote(await direct.json());
-  }
-  if (direct.status === 401 || direct.status === 429) {
-    throw new HackMDError(
-      messageForStatus(
-        direct.status,
-        header(direct.headersObject, "Retry-After")
-      ),
-      true
-    );
-  }
-
-  const owned = ref.owner ? await resolveByOwner(token, ref) : null;
-  if (owned) {
+  // An `@owner` URL must be resolved through its team (or the user's own note
+  // list): `GET /notes/{id}` only serves personal notes, so a team note queried
+  // there returns 403/404. This is why team notes failed before.
+  if (ref.owner) {
+    const owned = await resolveByOwner(token, ref);
+    if (!owned) throw new HackMDError(messageForStatus(404));
     const response = await apiGet(
       token,
       notePath(owned.noteId, owned.teamPath)
@@ -243,16 +244,18 @@ const fetchViaApi = async (
     if (response.ok) {
       return toFetchedNote(await response.json(), owned.teamPath);
     }
-    throw new HackMDError(
-      messageForStatus(
-        response.status,
-        header(response.headersObject, "Retry-After")
-      ),
-      response.status === 403
+    throw statusError(
+      response,
+      response.status === 401 || response.status === 403
     );
   }
 
-  throw new HackMDError(messageForStatus(direct.status));
+  // A bare slug is a personal note id or short id.
+  const direct = await apiGet(token, `/notes/${encodeURIComponent(ref.slug)}`);
+  if (direct.ok) {
+    return toFetchedNote(await direct.json());
+  }
+  throw statusError(direct, direct.status === 401 || direct.status === 429);
 };
 
 /** A 200 that is really the "note not found" page rather than markdown. */
