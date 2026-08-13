@@ -14,7 +14,6 @@ import markdownitSup from "markdown-it-sup";
 import markdownitRuby from "markdown-it-ruby";
 import markdownitFrontMatter from "markdown-it-front-matter";
 import { MD_CONST } from "./constants/markdown";
-import { ImageRenderer } from "./renderer/ImageRenderer";
 import { CheckIcon, DotByLevel, UnCheckIcon } from "./components/icons";
 import YAML from "js-yaml";
 
@@ -74,65 +73,7 @@ export class MarkdownTreeRenderer {
 
     const tokens = md.parse(markdown, {});
 
-    // Process tokens to handle images at block level
-    const processedTokens = tokens.reduce(
-      (acc: any[], token: any, index: number) => {
-        if (token.type === "inline" && token.children) {
-          // Find all image indices in children
-          const imageIndices = token.children
-            .map((t: any, i: number) => (t.type === "image" ? i : -1))
-            .filter((i: number) => i !== -1);
-
-          if (imageIndices.length === 0) {
-            // No images, just add the token as is
-            acc.push(token);
-          } else {
-            // Split the children around images
-            let lastIndex = 0;
-            imageIndices.forEach((imgIndex: number) => {
-              // Add text before image if exists
-              const beforeImage = token.children.slice(lastIndex, imgIndex);
-              if (beforeImage.length > 0) {
-                acc.push({
-                  ...token,
-                  children: beforeImage,
-                });
-              }
-
-              // Close paragraph before image
-              if (tokens[index - 1]?.type === "paragraph_open") {
-                acc.push({ type: "paragraph_close" });
-              }
-
-              // Add the image token
-              acc.push(token.children[imgIndex]);
-
-              // Open new paragraph after image
-              if (tokens[index + 1]?.type === "paragraph_close") {
-                acc.push({ type: "paragraph_open" });
-              }
-
-              lastIndex = imgIndex + 1;
-            });
-
-            // Add remaining text after last image if exists
-            const afterLastImage = token.children.slice(lastIndex);
-            if (afterLastImage.length > 0) {
-              acc.push({
-                ...token,
-                children: afterLastImage,
-              });
-            }
-          }
-        } else {
-          acc.push(token);
-        }
-        return acc;
-      },
-      []
-    );
-
-    const treeResult = this.tokenToTree(processedTokens, 0);
+    const treeResult = this.tokenToTree(tokens, 0);
     return (
       <AutoLayout direction="vertical" width="fill-parent" spacing={10}>
         {treeResult.element}
@@ -188,18 +129,6 @@ export class MarkdownTreeRenderer {
               {children}
             </AutoLayout>
           </AutoLayout>
-        );
-      case "image":
-        const srcAttr = token?.attrs?.find(
-          ([attr]: [string, string]) => attr === "src"
-        );
-        const src = srcAttr?.[1] || "";
-        return ImageRenderer.renderImage(
-          {
-            type: "image",
-            src,
-          },
-          index
         );
       case "hr":
         return (
@@ -770,6 +699,24 @@ export class MarkdownTreeRenderer {
           );
           index++;
           break;
+
+        case "image": {
+          flushText();
+          const src =
+            token.attrs?.find(([attr]: [string, string]) => attr === "src")?.[1] ||
+            "";
+          const alt = (token.content || "").trim();
+          spans.push(
+            <Span
+              key={`${parentKey}-span-${spanCounter++}`}
+              {...getTextStyle({ ...currentStyle, href: src }, src)}
+            >
+              {`🖼 ${alt || src}`}
+            </Span>
+          );
+          index++;
+          break;
+        }
 
         case "hardbreak":
           currentText += "\n";
