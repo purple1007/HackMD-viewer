@@ -1,6 +1,6 @@
 const { widget } = figma;
 
-const { AutoLayout, Text, Span, SVG } = widget;
+const { AutoLayout, Text, Span, SVG, Line } = widget;
 import { getTextStyle, TextStyle } from "./utils/styles";
 import MarkdownIt from "markdown-it";
 import { full as emoji } from "markdown-it-emoji";
@@ -120,25 +120,22 @@ export class MarkdownTreeRenderer {
               height="fill-parent"
               fill={MD_CONST.COLOR.GRAY}
             />
-            <AutoLayout
-              width="fill-parent"
-              direction="horizontal"
-              spacing={2}
-              wrap
-            >
+            <AutoLayout width="fill-parent" direction="vertical" spacing={10}>
               {children}
             </AutoLayout>
           </AutoLayout>
         );
       case "hr":
+        // A transparent box supplies the vertical breathing room; the Line is
+        // the actual 1px rule. (Padding on a filled box made a ~21px grey bar.)
         return (
           <AutoLayout
             key={index}
             width="fill-parent"
-            height={1}
-            fill={MD_CONST.COLOR.GRAY}
             padding={{ vertical: 10 }}
-          />
+          >
+            <Line length="fill-parent" stroke={MD_CONST.COLOR.GRAY} />
+          </AutoLayout>
         );
       case "code_block":
       case "fence": {
@@ -504,25 +501,25 @@ export class MarkdownTreeRenderer {
                   <AutoLayout
                     key={tokenKey}
                     direction="horizontal"
-                    spacing={3}
+                    spacing={6}
                     verticalAlignItems="start"
                     width="fill-parent"
                   >
-                    <AutoLayout padding={{ top: task ? 4 : 8 }}>
-                      {task ? (
+                    {task ? (
+                      // The checkbox is a small glyph; nudge it down to sit on
+                      // the text's first line.
+                      <AutoLayout padding={{ top: 4 }}>
                         <SVG src={task.checked ? CheckIcon : UnCheckIcon} />
-                      ) : ordered ? (
-                        <Text
-                          {...getTextStyle(style)}
-                          horizontalAlignText="right"
-                          width={20}
-                        >
-                          {`${marker}.`}
-                        </Text>
-                      ) : (
+                      </AutoLayout>
+                    ) : ordered ? (
+                      // Plain text at the content's line height and top-aligned,
+                      // so "1." and "57." line up with the item and never wrap.
+                      <Text {...getTextStyle(style)}>{`${marker}.`}</Text>
+                    ) : (
+                      <AutoLayout padding={{ top: 8 }}>
                         <SVG src={DotByLevel(listLevel)} />
-                      )}
-                    </AutoLayout>
+                      </AutoLayout>
+                    )}
                     <AutoLayout width="fill-parent" direction="vertical">
                       {result.element}
                     </AutoLayout>
@@ -684,6 +681,34 @@ export class MarkdownTreeRenderer {
       }
     };
 
+    // HackMD `@username` mentions arrive as plain text in the raw markdown, so
+    // style them as links to the user's HackMD profile. Only a handle preceded
+    // by start-of-string / whitespace / an opening punctuation is treated as a
+    // mention, which keeps email local-parts (foo@bar) out.
+    const MENTION =
+      /(^|[\s(，、,])@([A-Za-z0-9](?:[A-Za-z0-9_-]*[A-Za-z0-9])?)/g;
+    const appendText = (text: string) => {
+      let last = 0;
+      let match: RegExpExecArray | null;
+      MENTION.lastIndex = 0;
+      while ((match = MENTION.exec(text))) {
+        const at = match.index + match[1].length; // index of the '@'
+        currentText += text.slice(last, at);
+        flushText();
+        const href = `https://hackmd.io/@${match[2]}`;
+        spans.push(
+          <Span
+            key={`${parentKey}-span-${spanCounter++}`}
+            {...getTextStyle({ ...currentStyle, href }, href)}
+          >
+            {`@${match[2]}`}
+          </Span>
+        );
+        last = MENTION.lastIndex;
+      }
+      currentText += text.slice(last);
+    };
+
     while (index < tokens.length) {
       const token = tokens[index];
 
@@ -695,7 +720,7 @@ export class MarkdownTreeRenderer {
           break;
 
         case "text":
-          currentText += token.content;
+          appendText(token.content);
           index++;
           break;
 
