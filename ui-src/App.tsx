@@ -30,10 +30,9 @@ function App() {
     try {
       parseHackMDUrl(url);
       setError("");
-      if (token.trim()) {
-        post({ type: "token", value: token.trim() });
-      }
-      post({ type: "url", value: url });
+      // One message: the widget must store the token before it reads it back to
+      // fetch, so URL and token can't be two racing messages.
+      post({ type: "url", value: url, token: token.trim() || undefined });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "發生未知錯誤");
     }

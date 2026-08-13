@@ -134,13 +134,11 @@ function HackMDViewer() {
           onClick={async () => {
             const hasToken = Boolean(await getToken());
             await showSettingsUI("url", hasToken, async (msg) => {
-              if (msg.type === "token" && msg.value) {
-                await setToken(msg.value);
-              }
-              if (msg.type === "url" && msg.value) {
-                setUrl(msg.value);
-                await fetchHackMDContent(msg.value);
-              }
+              if (msg.type !== "url" || !msg.value) return;
+              // Persist the token first: fetchHackMDContent reads it back.
+              if (msg.token) await setToken(msg.token);
+              setUrl(msg.value);
+              await fetchHackMDContent(msg.value);
             });
           }}
         />
