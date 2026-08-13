@@ -93,18 +93,49 @@ const CORS_BLOCKED =
   "Access-Control-Allow-Origin，瀏覽器會擋掉這個跨來源請求。" +
   "目前只有公開筆記可以顯示。";
 
+/** How long any single request may run before we give up on it. */
+const REQUEST_TIMEOUT_MS = 8000;
+
+/**
+ * Rejects if `promise` hasn't settled within `ms`. A CORS-blocked request in
+ * the widget sandbox can stay pending for a very long time before the network
+ * layer fails — without this the widget would sit on "載入中…" and look frozen.
+ * The underlying fetch may still be in flight; we just stop waiting on it.
+ */
+const withTimeout = <T>(promise: Promise<T>, message: string): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new HackMDError(message)),
+      REQUEST_TIMEOUT_MS
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+
 const apiGet = async (token: string, path: string) => {
   try {
-    return await fetch(`${API_BASE}${path}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json",
-      },
-    });
+    return await withTimeout(
+      fetch(`${API_BASE}${path}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      }),
+      CORS_BLOCKED
+    );
   } catch (error) {
-    // The Authorization header forces a preflight, which api.hackmd.io answers
-    // without CORS headers, so the request never leaves the sandbox.
-    throw new HackMDError(CORS_BLOCKED);
+    // The Authorization header forces a preflight that api.hackmd.io answers
+    // without CORS headers, so the request never completes — surface that
+    // rather than let a rejected/handing fetch escape as "Failed to fetch".
+    throw error instanceof HackMDError ? error : new HackMDError(CORS_BLOCKED);
   }
 };
 
@@ -227,33 +258,33 @@ const fetchViaApi = async (
 /** A 200 that is really the "note not found" page rather than markdown. */
 const looksLikeHtml = (body: string) => /^\s*<(?:!doctype|html)\b/i.test(body);
 
+/** Marker error meaning "download didn't work, and it wasn't a server error". */
+const NOT_PUBLIC = "not-public";
+
 /**
- * Fetches raw markdown without a token.
- *
- * Only `/download` is reachable: it is the one HackMD route that sends
- * `Access-Control-Allow-Origin: *`. The `Accept: text/markdown` negotiation
- * works server-side but its response carries no ACAO, so a widget cannot read
- * it — don't waste a request on it.
+ * Fetches raw markdown from the public `/download` endpoint — the one HackMD
+ * route that sends `Access-Control-Allow-Origin: *`, so the only route a
+ * null-origin widget can actually read. Resolves for public / link-readable /
+ * published notes; rejects (without hanging) for everything else.
  */
-const fetchPublic = async (
-  ref: NoteRef,
-  hasToken: boolean
-): Promise<FetchedNote> => {
+const fetchPublic = async (ref: NoteRef): Promise<FetchedNote> => {
   let lastStatus = 0;
-  let blocked = false;
 
   for (const url of publicUrlsFor(ref)) {
     let response;
     try {
-      response = await fetch(`${url}/download?t=${Date.now()}`);
+      response = await withTimeout(
+        fetch(`${url}/download?t=${Date.now()}`),
+        "連線 HackMD 逾時，請稍後再試。"
+      );
     } catch (error) {
-      // A private note's 403 carries no CORS headers, so the browser rejects the
-      // response and fetch rejects rather than resolving with a status.
-      blocked = true;
+      // A private note's 403 (no CORS headers) and a timeout both land here; a
+      // later URL in the list may still work, so keep going.
       continue;
     }
     if (response.ok) {
       const body = await response.text();
+      // A 200 can still be the "note not found" HTML page rather than markdown.
       if (!looksLikeHtml(body)) {
         return { content: body, source: "public" };
       }
@@ -264,55 +295,61 @@ const fetchPublic = async (
   if (lastStatus && lastStatus !== 403 && lastStatus !== 404) {
     throw new HackMDError(`無法載入這篇筆記（${lastStatus}）。`);
   }
-
-  // A 403 and a 404 both come back without CORS headers, so the browser hides
-  // the status from us and both surface as a rejected fetch. Name both causes
-  // rather than guessing at one.
-  const causes = ["這篇筆記不是公開的"];
-  if (ref.owner) {
-    causes.push(
-      "或是網址用了自訂 permalink（/@" +
-        ref.owner +
-        "/my-note），請改用筆記的短網址（/@" +
-        ref.owner +
-        "/xxxxxxxx）"
-    );
-  }
-  throw new HackMDError(
-    `無法載入這篇筆記：${causes.join("，")}。` +
-      (hasToken
-        ? "已設定 API token，但 Figma widget 無法呼叫 api.hackmd.io（該網域未回傳 CORS 標頭），所以目前讀不到私人筆記。"
-        : "請把瀏覽權限改成「知道連結的人可讀」、發布這篇筆記，或改用短網址。")
-  );
+  throw new HackMDError(NOT_PUBLIC);
 };
 
 /**
  * Loads a note's markdown.
  *
- * The API is tried first when a token is set, so that any note the token can
- * read renders as soon as api.hackmd.io is reachable from a widget (see the CORS
- * note at the top of this file). Until then every call falls through to the
- * public download endpoint, the only CORS-enabled route.
+ * Public `/download` is tried first: it is the only CORS-reachable route, so it
+ * is both the fast path for public notes and the only path that can succeed in a
+ * widget today. The authenticated API is a fallback for when a note is not
+ * public — it cannot run in a widget yet (api.hackmd.io sends no CORS headers),
+ * but it is written and wired so it starts working the moment those headers
+ * land. Every request is time-boxed so a blocked call can't freeze the widget.
  */
 export const fetchNote = async (
   ref: NoteRef,
   token?: string,
   resolved?: { noteId?: string; teamPath?: string }
 ): Promise<FetchedNote> => {
-  // Published /s/ links have no API id; go straight to the public endpoint.
-  if (token && !ref.published) {
-    try {
-      return await fetchViaApi(token, ref, resolved);
-    } catch (error) {
-      // An invalid token or an outright denial is worth reporting rather than
-      // silently downgrading to the public endpoint.
-      if (error instanceof HackMDError && error.fatal) {
-        throw error;
-      }
-      // Otherwise the note may still be publicly readable. fetchPublic's
-      // messages already account for a token being present.
-    }
-  }
+  try {
+    return await fetchPublic(ref);
+  } catch (publicError) {
+    // A server error from /download (not a plain "not public") is worth keeping.
+    const publicSpecific =
+      publicError instanceof HackMDError && publicError.message !== NOT_PUBLIC
+        ? publicError
+        : undefined;
 
-  return fetchPublic(ref, Boolean(token));
+    // Not public. With a token the note might still be readable via the API.
+    if (token && !ref.published) {
+      try {
+        return await fetchViaApi(token, ref, resolved);
+      } catch (apiError) {
+        // A definite answer (invalid token, denied) beats the generic message.
+        if (apiError instanceof HackMDError && apiError.fatal) throw apiError;
+      }
+    }
+
+    throw (
+      publicSpecific ?? new HackMDError(notPublicMessage(ref, Boolean(token)))
+    );
+  }
+};
+
+/** The message shown when a note can't be read without (working) API access. */
+const notPublicMessage = (ref: NoteRef, hasToken: boolean): string => {
+  const causes = ["這篇筆記不是公開的"];
+  if (ref.owner) {
+    causes.push(
+      `或是網址用了自訂 permalink（/@${ref.owner}/my-note），請改用短網址（/@${ref.owner}/xxxxxxxx）`
+    );
+  }
+  return (
+    `無法載入這篇筆記：${causes.join("，")}。` +
+    (hasToken
+      ? "已設定 API token，但 Figma widget 目前無法呼叫 api.hackmd.io（該網域未回傳 CORS 標頭），所以還讀不到私人筆記。"
+      : "請把瀏覽權限改成「知道連結的人可讀」、發布這篇筆記，或改用短網址。")
+  );
 };

@@ -78,14 +78,11 @@ function App() {
         value={url}
         onChange={(e) => setUrl(e.target.value)}
       />
-      <p>API token（私人筆記才需要）:</p>
-      <input
-        className="input"
-        type="password"
-        placeholder={hasToken ? "已設定，可留空" : "選填"}
-        value={token}
-        onChange={(e) => setToken(e.target.value)}
-      />
+      <p className="hint">
+        {hasToken
+          ? "API token 已設定 ✓（可在工具列的齒輪圖示更新）"
+          : "公開筆記可直接載入。私人筆記請先用工具列的齒輪圖示設定 API token。"}
+      </p>
       {error && (
         <div className="error">
           <p>{error}</p>
