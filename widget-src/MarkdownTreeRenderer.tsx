@@ -15,15 +15,46 @@ import markdownitRuby from "markdown-it-ruby";
 import markdownitFrontMatter from "markdown-it-front-matter";
 import { MD_CONST } from "./constants/markdown";
 import { ImageRenderer } from "./renderer/ImageRenderer";
-import { DotByLevel } from "./components/icons";
+import { CheckIcon, DotByLevel, UnCheckIcon } from "./components/icons";
 import YAML from "js-yaml";
+
+type CellAlign = "left" | "center" | "right";
+
+/**
+ * Context that flows down the token tree alongside the text style: things a
+ * child needs to know about its ancestors but that aren't styling.
+ */
+interface TreeContext {
+  /** Rows inside <thead> get the shaded background. */
+  inTableHead?: boolean;
+  /** Alignment declared by the enclosing th/td. */
+  cellAlign?: CellAlign;
+  /** The enclosing list; `next` is mutated as items are emitted. */
+  list?: { ordered: boolean; next: number };
+}
+
+/** Renders raw HTML as plain text — a widget can't render markup. */
+const htmlToText = (html: string): string =>
+  html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li|tr|h[1-6])>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#(?:39|x27);/g, "'")
+    .replace(/&amp;/g, "&")
+    .trim();
 
 export class MarkdownTreeRenderer {
   // New function: Convert markdown-it tokens to a React-like tree and render them.
   static renderMarkdownAsTree(markdown: string): FigmaDeclarativeNode {
     const md = new MarkdownIt("default", {
       html: true,
-      typographer: true,
+      // Match HackMD: bare URLs become links, but no smart-quote substitution.
+      linkify: true,
+      typographer: false,
     });
 
     md.use(markdownitAbbr);
@@ -181,7 +212,11 @@ export class MarkdownTreeRenderer {
           />
         );
       case "code_block":
-      case "fence":
+      case "fence": {
+        // `token.info` holds the fence info string, e.g. ```ts=  -> "ts="
+        const language = String(token.info ?? "")
+          .trim()
+          .split(/[\s=]/)[0];
         return (
           <AutoLayout
             key={index}
@@ -189,8 +224,19 @@ export class MarkdownTreeRenderer {
             direction="vertical"
             fill={MD_CONST.COLOR.CODE_BG}
             padding={16}
+            spacing={8}
             cornerRadius={8}
           >
+            {language ? (
+              <Text
+                fontFamily="JetBrains Mono"
+                fontSize={12}
+                fill={MD_CONST.COLOR.GRAY}
+                textCase="lower"
+              >
+                {language}
+              </Text>
+            ) : null}
             <Text
               width="fill-parent"
               fontFamily="JetBrains Mono"
@@ -198,10 +244,20 @@ export class MarkdownTreeRenderer {
               fill={MD_CONST.COLOR.BLACK}
               lineHeight={21}
             >
-              {token.content}
+              {String(token.content ?? "").replace(/\n+$/, "")}
             </Text>
           </AutoLayout>
         );
+      }
+      case "html_block": {
+        const text = htmlToText(token?.content ?? "");
+        if (!text) return <AutoLayout key={index} hidden />;
+        return (
+          <Text key={index} width="fill-parent" {...getTextStyle(style)}>
+            {text}
+          </Text>
+        );
+      }
       case "footnote_anchor":
         return (
           <Text key={index} {...getTextStyle({ footnote: true })}>
@@ -217,10 +273,36 @@ export class MarkdownTreeRenderer {
     }
   }
 
+  /**
+   * Looks ahead from a `list_item_open` for the item's first inline token and,
+   * if it starts with a task-list marker, strips the marker and reports its
+   * checked state. Returns null for ordinary list items.
+   */
+  private static takeTaskMarker(
+    tokens: any[],
+    listItemIndex: number
+  ): { checked: boolean } | null {
+    for (let i = listItemIndex + 1; i < tokens.length; i++) {
+      const token = tokens[i];
+      if (token.type === "inline") {
+        const first = token.children?.[0];
+        if (first?.type !== "text") return null;
+        const match = /^\[([ xX])\]\s+/.exec(first.content);
+        if (!match) return null;
+        first.content = first.content.slice(match[0].length);
+        return { checked: match[1] !== " " };
+      }
+      // Only the item's own opening wrapper may sit before its first inline.
+      if (token.type !== "paragraph_open") return null;
+    }
+    return null;
+  }
+
   private static tokenToTree(
     tokens: any[],
     index: number = 0,
-    style: TextStyle = {}
+    style: TextStyle = {},
+    ctx: TreeContext = {}
   ): { element: FigmaDeclarativeNode[]; newIndex: number } {
     const elems: FigmaDeclarativeNode[] = [];
     while (index < tokens.length) {
@@ -300,7 +382,7 @@ export class MarkdownTreeRenderer {
             ...style,
             heading: { level },
           };
-          const result = this.tokenToTree(tokens, index + 1, newStyle);
+          const result = this.tokenToTree(tokens, index + 1, newStyle, ctx);
           elems.push(
             <AutoLayout key={tokenKey} direction="horizontal" width="fill-parent" wrap>
               {result.element}
@@ -310,7 +392,7 @@ export class MarkdownTreeRenderer {
           break;
         }
         case "paragraph_open": {
-          const result = this.tokenToTree(tokens, index + 1, style);
+          const result = this.tokenToTree(tokens, index + 1, style, ctx);
           elems.push(
             <AutoLayout
               key={tokenKey}
@@ -330,7 +412,8 @@ export class MarkdownTreeRenderer {
             token.children,
             0,
             style,
-            tokenKey // Pass tokenKey to inlineTokenToTree
+            tokenKey, // Pass tokenKey to inlineTokenToTree
+            ctx.cellAlign
           );
           elems.push(element);
           index++;
@@ -342,7 +425,7 @@ export class MarkdownTreeRenderer {
           } else if (token.type.endsWith("_open")) {
             switch (token.type) {
               case "footnote_block_open": {
-                const result = this.tokenToTree(tokens, index + 1, style);
+                const result = this.tokenToTree(tokens, index + 1, style, ctx);
                 elems.push(
                   <AutoLayout
                     key={tokenKey}
@@ -363,7 +446,7 @@ export class MarkdownTreeRenderer {
                 break;
               }
               case "footnote_open": {
-                const result = this.tokenToTree(tokens, index + 1, style);
+                const result = this.tokenToTree(tokens, index + 1, style, ctx);
                 elems.push(
                   <AutoLayout
                     key={tokenKey}
@@ -394,7 +477,7 @@ export class MarkdownTreeRenderer {
               case "container_info_open":
               case "container_warning_open":
               case "container_danger_open": {
-                const result = this.tokenToTree(tokens, index + 1, style);
+                const result = this.tokenToTree(tokens, index + 1, style, ctx);
                 const bgColor =
                   token.type === "container_success_open"
                     ? "#D9F9E5"
@@ -421,7 +504,23 @@ export class MarkdownTreeRenderer {
               case "bullet_list_open":
               case "ordered_list_open": {
                 const isNested = token.level > 0;
-                const result = this.tokenToTree(tokens, index + 1, style);
+                const startAttr = token.attrs?.find(
+                  ([attr]: [string, string]) => attr === "start"
+                )?.[1];
+                // A fresh counter per list so nested lists don't share numbering.
+                const listCtx: TreeContext = {
+                  ...ctx,
+                  list:
+                    token.type === "ordered_list_open"
+                      ? { ordered: true, next: Number(startAttr ?? 1) || 1 }
+                      : { ordered: false, next: 1 },
+                };
+                const result = this.tokenToTree(
+                  tokens,
+                  index + 1,
+                  style,
+                  listCtx
+                );
                 if (isNested) {
                   elems.push(
                     <AutoLayout
@@ -450,10 +549,16 @@ export class MarkdownTreeRenderer {
                 break;
               }
               case "list_item_open": {
-                const result = this.tokenToTree(tokens, index + 1, style);
+                // `- [ ] foo` / `- [x] foo` — markdown-it has no notion of task
+                // lists, so strip the marker off the item's first text token and
+                // render a checkbox instead of a bullet.
+                const task = MarkdownTreeRenderer.takeTaskMarker(tokens, index);
+                const result = this.tokenToTree(tokens, index + 1, style, ctx);
                 // Use the token.level + 1 to determine the nesting level
                 // +1 because level is 0-based but we want 1-based for our DotByLevel function
                 const listLevel = token.level + 1;
+                const ordered = ctx.list?.ordered === true;
+                const marker = ctx.list && ordered ? ctx.list.next++ : 0;
                 elems.push(
                   <AutoLayout
                     key={tokenKey}
@@ -462,8 +567,20 @@ export class MarkdownTreeRenderer {
                     verticalAlignItems="start"
                     width="fill-parent"
                   >
-                    <AutoLayout padding={{ top: 8 }}>
-                      <SVG src={DotByLevel(listLevel)} />
+                    <AutoLayout padding={{ top: task ? 4 : 8 }}>
+                      {task ? (
+                        <SVG src={task.checked ? CheckIcon : UnCheckIcon} />
+                      ) : ordered ? (
+                        <Text
+                          {...getTextStyle(style)}
+                          horizontalAlignText="right"
+                          width={20}
+                        >
+                          {`${marker}.`}
+                        </Text>
+                      ) : (
+                        <SVG src={DotByLevel(listLevel)} />
+                      )}
                     </AutoLayout>
                     <AutoLayout width="fill-parent" direction="vertical">
                       {result.element}
@@ -474,7 +591,7 @@ export class MarkdownTreeRenderer {
                 break;
               }
               case "table_open": {
-                const result = this.tokenToTree(tokens, index + 1, style);
+                const result = this.tokenToTree(tokens, index + 1, style, ctx);
                 elems.push(
                   <AutoLayout
                     key={tokenKey}
@@ -493,7 +610,10 @@ export class MarkdownTreeRenderer {
               }
               case "thead_open":
               case "tbody_open": {
-                const result = this.tokenToTree(tokens, index + 1, style);
+                const result = this.tokenToTree(tokens, index + 1, style, {
+                  ...ctx,
+                  inTableHead: token.type === "thead_open",
+                });
                 elems.push(
                   <AutoLayout
                     key={tokenKey}
@@ -507,7 +627,7 @@ export class MarkdownTreeRenderer {
                 break;
               }
               case "tr_open": {
-                const result = this.tokenToTree(tokens, index + 1, style);
+                const result = this.tokenToTree(tokens, index + 1, style, ctx);
                 elems.push(
                   <AutoLayout
                     key={tokenKey}
@@ -515,12 +635,7 @@ export class MarkdownTreeRenderer {
                     direction="horizontal"
                     stroke={MD_CONST.COLOR.GRAY}
                     strokeWidth={1}
-                    fill={
-                      token.tag === "tr" &&
-                      tokens[index - 2]?.type === "thead_open"
-                        ? MD_CONST.COLOR.CODE_BG
-                        : undefined
-                    }
+                    fill={ctx.inTableHead ? MD_CONST.COLOR.CODE_BG : undefined}
                   >
                     {result.element}
                   </AutoLayout>
@@ -537,10 +652,15 @@ export class MarkdownTreeRenderer {
                 const align = token.attrs?.find(
                   ([attr]: [string, string]) => attr === "style"
                 )?.[1];
-                const textAlign = align?.includes("text-align:")
-                  ? align.split("text-align:")[1].trim()
-                  : "left";
-                const result = this.tokenToTree(tokens, index + 1, newStyle);
+                const textAlign = (
+                  align?.includes("text-align:")
+                    ? align.split("text-align:")[1].trim()
+                    : "left"
+                ) as CellAlign;
+                const result = this.tokenToTree(tokens, index + 1, newStyle, {
+                  ...ctx,
+                  cellAlign: textAlign,
+                });
                 elems.push(
                   <AutoLayout
                     key={tokenKey}
@@ -563,7 +683,7 @@ export class MarkdownTreeRenderer {
               }
               default: {
                 const componentType = token.tag;
-                const result = this.tokenToTree(tokens, index + 1, style);
+                const result = this.tokenToTree(tokens, index + 1, style, ctx);
                 elems.push(
                   MarkdownTreeRenderer.renderBlockComponent(
                     componentType,
@@ -601,7 +721,8 @@ export class MarkdownTreeRenderer {
     tokens: any[],
     index: number = 0,
     style: TextStyle = {},
-    parentKey: string = ''
+    parentKey: string = "",
+    align?: CellAlign
   ): { element: FigmaDeclarativeNode; newIndex: number } {
     const spans: (string | number | FigmaVirtualNode<"span">)[] = [];
     let currentStyle = { ...style };
@@ -650,9 +771,18 @@ export class MarkdownTreeRenderer {
           index++;
           break;
 
-        case "html_inline":
+        case "hardbreak":
+          currentText += "\n";
           index++;
           break;
+
+        case "html_inline": {
+          const text = htmlToText(token.content);
+          if (text) currentText += text;
+          else if (/<br\s*\/?>/i.test(token.content)) currentText += "\n";
+          index++;
+          break;
+        }
 
         case "footnote_ref":
           flushText();
@@ -797,7 +927,15 @@ export class MarkdownTreeRenderer {
 
     flushText();
     return {
-      element: <Text key={parentKey} width="fill-parent">{spans}</Text>,
+      element: (
+        <Text
+          key={parentKey}
+          width="fill-parent"
+          horizontalAlignText={align ?? "left"}
+        >
+          {spans}
+        </Text>
+      ),
       newIndex: index,
     };
   }
