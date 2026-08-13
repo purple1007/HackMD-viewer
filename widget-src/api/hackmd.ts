@@ -3,6 +3,27 @@
  *
  * Widget-sandbox only: the sandbox's fetch returns a FetchResponse (headers
  * come back as a plain `headersObject`), not a DOM Response.
+ *
+ * ## CORS
+ *
+ * A widget's fetch is a real browser fetch from a null-origin iframe, so it can
+ * only reach endpoints that send `Access-Control-Allow-Origin: *`
+ * (https://developers.figma.com/docs/plugins/making-network-requests/).
+ * `networkAccess.allowedDomains` is a whitelist, not a proxy. Measured:
+ *
+ *   hackmd.io/{shortId}/download          200  ACAO: *   <- usable
+ *   hackmd.io/@owner/{shortId}/download   200  ACAO: *   <- usable
+ *   hackmd.io/s/{publishId}/download      200  ACAO: *   <- usable
+ *   hackmd.io/@owner/{permalink}/download 404  no route
+ *   hackmd.io/@owner/{permalink}          200  no ACAO
+ *   api.hackmd.io/v1/*                    ---  no ACAO, preflight 400s
+ *
+ * So the authenticated path below cannot currently run inside a widget: reading
+ * private notes needs api.hackmd.io to send `Access-Control-Allow-Origin: *`
+ * plus `Access-Control-Allow-Headers: Authorization` on its preflight. The
+ * client is kept — it is correct against the documented API and starts working
+ * the moment those headers land — but its failure is reported honestly rather
+ * than surfacing as a bare "Failed to fetch".
  */
 
 import {
@@ -67,13 +88,25 @@ interface ApiNote {
   lastChangedAt?: number;
 }
 
-const apiGet = async (token: string, path: string) =>
-  fetch(`${API_BASE}${path}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
-    },
-  });
+const CORS_BLOCKED =
+  "無法從 Figma widget 呼叫 HackMD API：api.hackmd.io 沒有回傳 " +
+  "Access-Control-Allow-Origin，瀏覽器會擋掉這個跨來源請求。" +
+  "目前只有公開筆記可以顯示。";
+
+const apiGet = async (token: string, path: string) => {
+  try {
+    return await fetch(`${API_BASE}${path}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
+  } catch (error) {
+    // The Authorization header forces a preflight, which api.hackmd.io answers
+    // without CORS headers, so the request never leaves the sandbox.
+    throw new HackMDError(CORS_BLOCKED);
+  }
+};
 
 /** True when a note from a listing is the one the URL pointed at. */
 const matchesSlug = (note: ApiNote, slug: string) =>
@@ -197,28 +230,28 @@ const looksLikeHtml = (body: string) => /^\s*<(?:!doctype|html)\b/i.test(body);
 /**
  * Fetches raw markdown without a token.
  *
- * `/download` is the cleanest source but 404s for `@owner/<permalink>` URLs, so
- * fall back to HackMD's content negotiation, which honours `Accept:
- * text/markdown` on any note URL.
+ * Only `/download` is reachable: it is the one HackMD route that sends
+ * `Access-Control-Allow-Origin: *`. The `Accept: text/markdown` negotiation
+ * works server-side but its response carries no ACAO, so a widget cannot read
+ * it — don't waste a request on it.
  */
 const fetchPublic = async (
   ref: NoteRef,
   hasToken: boolean
 ): Promise<FetchedNote> => {
-  const urls = publicUrlsFor(ref);
   let lastStatus = 0;
+  let blocked = false;
 
-  const attempts: { url: string; markdownAccept: boolean }[] = [
-    ...urls.map((url) => ({ url: `${url}/download`, markdownAccept: false })),
-    ...urls.map((url) => ({ url, markdownAccept: true })),
-  ];
-
-  for (const attempt of attempts) {
-    const response = await fetch(`${attempt.url}?t=${Date.now()}`, {
-      headers: attempt.markdownAccept
-        ? { Accept: "text/markdown;q=1.0, text/html;q=0.1" }
-        : undefined,
-    });
+  for (const url of publicUrlsFor(ref)) {
+    let response;
+    try {
+      response = await fetch(`${url}/download?t=${Date.now()}`);
+    } catch (error) {
+      // A private note's 403 carries no CORS headers, so the browser rejects the
+      // response and fetch rejects rather than resolving with a status.
+      blocked = true;
+      continue;
+    }
     if (response.ok) {
       const body = await response.text();
       if (!looksLikeHtml(body)) {
@@ -228,30 +261,44 @@ const fetchPublic = async (
     lastStatus = response.status;
   }
 
-  if (lastStatus === 404) {
-    throw new HackMDError("找不到這篇筆記，請確認網址是否正確。");
+  if (lastStatus && lastStatus !== 403 && lastStatus !== 404) {
+    throw new HackMDError(`無法載入這篇筆記（${lastStatus}）。`);
+  }
+
+  // A 403 and a 404 both come back without CORS headers, so the browser hides
+  // the status from us and both surface as a rejected fetch. Name both causes
+  // rather than guessing at one.
+  const causes = ["這篇筆記不是公開的"];
+  if (ref.owner) {
+    causes.push(
+      "或是網址用了自訂 permalink（/@" +
+        ref.owner +
+        "/my-note），請改用筆記的短網址（/@" +
+        ref.owner +
+        "/xxxxxxxx）"
+    );
   }
   throw new HackMDError(
-    hasToken
-      ? "無法載入這篇筆記：API token 讀不到它，它也不是公開筆記。"
-      : "無法載入這篇筆記。若它不是公開筆記，請在 widget 選單設定 HackMD API token。"
+    `無法載入這篇筆記：${causes.join("，")}。` +
+      (hasToken
+        ? "已設定 API token，但 Figma widget 無法呼叫 api.hackmd.io（該網域未回傳 CORS 標頭），所以目前讀不到私人筆記。"
+        : "請把瀏覽權限改成「知道連結的人可讀」、發布這篇筆記，或改用短網址。")
   );
 };
 
 /**
  * Loads a note's markdown.
  *
- * With a token the API is tried first, so any note the token can read renders —
- * the note does not have to be public. Without one (or if the API cannot serve
- * it) this falls back to the public download endpoint.
+ * The API is tried first when a token is set, so that any note the token can
+ * read renders as soon as api.hackmd.io is reachable from a widget (see the CORS
+ * note at the top of this file). Until then every call falls through to the
+ * public download endpoint, the only CORS-enabled route.
  */
 export const fetchNote = async (
   ref: NoteRef,
   token?: string,
   resolved?: { noteId?: string; teamPath?: string }
 ): Promise<FetchedNote> => {
-  let apiError: HackMDError | undefined;
-
   // Published /s/ links have no API id; go straight to the public endpoint.
   if (token && !ref.published) {
     try {
@@ -262,15 +309,10 @@ export const fetchNote = async (
       if (error instanceof HackMDError && error.fatal) {
         throw error;
       }
-      // Otherwise the note may still be publicly readable.
-      if (error instanceof HackMDError) apiError = error;
+      // Otherwise the note may still be publicly readable. fetchPublic's
+      // messages already account for a token being present.
     }
   }
 
-  try {
-    return await fetchPublic(ref, Boolean(token));
-  } catch (error) {
-    // The API's reason is more specific than "it isn't public either".
-    throw apiError ?? error;
-  }
+  return fetchPublic(ref, Boolean(token));
 };

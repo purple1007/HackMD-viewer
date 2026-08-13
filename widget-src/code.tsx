@@ -58,11 +58,13 @@ function HackMDViewer() {
       setTeamPath(note.teamPath || "");
       setLastSyncTime(new Date().toUTCString());
     } catch (err) {
-      const message =
+      // Anything that isn't a HackMDError is a raw sandbox failure (a rejected
+      // fetch reads as "Failed to fetch"), which tells the reader nothing.
+      setError(
         err instanceof HackMDError
           ? err.message
-          : (err as Error)?.message || "無法讀取文件，請確認網址連結或瀏覽權限";
-      setError(message);
+          : "無法讀取文件，請確認網址連結或瀏覽權限。"
+      );
     } finally {
       setLoading(false);
     }

@@ -6,23 +6,55 @@ This Figma Plugin allows users to paste HackMD document URLs and render them dir
 The code was developed with assistance from GitHub Copilot.
 If you have any suggestions for improving the code, please feel free to report them.
 
-### Reading private notes
+### Which notes can be rendered
 
-Public notes work with no setup. For a private or team note, add a HackMD API
-token and the viewer will read the note through the API instead:
+A widget's `fetch` is a real browser request from a **null-origin iframe**, so it
+can only read endpoints that send `Access-Control-Allow-Origin: *`
+([Figma docs](https://developers.figma.com/docs/plugins/making-network-requests/)).
+`networkAccess.allowedDomains` is a whitelist, not a proxy. What HackMD sends:
 
-1. In HackMD, go to **Settings → API → Create API token** and copy the token.
-2. In Figma, select the widget and choose **設定 HackMD API token** from its
-   property menu (or paste the token into the field on the setup card).
+| endpoint                                | status | CORS      |
+| --------------------------------------- | ------ | --------- |
+| `hackmd.io/{shortId}/download`          | 200    | `ACAO: *` |
+| `hackmd.io/@owner/{shortId}/download`   | 200    | `ACAO: *` |
+| `hackmd.io/s/{publishId}/download`      | 200    | `ACAO: *` |
+| `hackmd.io/@owner/{permalink}/download` | 404    | no route  |
+| `hackmd.io/@owner/{permalink}`          | 200    | no ACAO   |
+| `api.hackmd.io/v1/*`                    | —      | no ACAO   |
 
-Any note the token can read will render — the note does not have to be shared
-publicly. The token is stored with `figma.clientStorage`, so it stays on your
-own machine: it is never written into the Figma file and collaborators never
-see it. They will still see the note content you synced; only refreshing it
-requires a token of their own.
+So today the viewer renders **notes readable via a link, or published notes**,
+addressed by their **short URL** (`/xxxxxxxx` or `/@owner/xxxxxxxx`). A custom
+permalink has no CORS-reachable route — use the note's short URL instead.
+
+### Reading private notes (blocked on the API)
+
+`widget-src/api/hackmd.ts` implements the authenticated path — `GET /notes/{id}`,
+plus permalink resolution via `GET /teams` and `GET /teams/{path}/notes` — and it
+is wired up behind the token setting. It cannot run yet: `api.hackmd.io` returns
+no `Access-Control-Allow-Origin`, and because the `Authorization` header forces a
+CORS preflight, its `OPTIONS` response (currently `400`, no CORS headers) blocks
+the request before it is sent.
+
+**To unblock it, `api.hackmd.io` needs to send:**
+
+- `Access-Control-Allow-Origin: *` on responses, and
+- `Access-Control-Allow-Headers: Authorization` on the preflight, answering
+  `OPTIONS` with a `2xx`.
+
+`*` is safe here because the API authenticates with a bearer token in a header
+rather than cookies, so no credentials are attached to a cross-origin request.
+Once those headers ship, any note the token can read will render with no client
+change; until then the widget explains why a private note failed instead of
+showing a CORS error.
+
+When a token is set it is stored with `figma.clientStorage`, so it stays on your
+own machine: it is never written into the Figma file and collaborators never see
+it.
 
 ### ⚠️ Current Technical Limitations
 
+- Private notes cannot be read yet — see above
+- Notes must be addressed by short URL, not by a custom permalink
 - Images are shown as links rather than embedded — open the original note to
   view them
 - Raw HTML blocks are rendered as plain text
