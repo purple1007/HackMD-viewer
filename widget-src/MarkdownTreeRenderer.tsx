@@ -429,8 +429,9 @@ export class MarkdownTreeRenderer {
                     key={tokenKey}
                     width="fill-parent"
                     direction="vertical"
-                    padding={10}
+                    padding={12}
                     fill={bgColor}
+                    cornerRadius={8}
                     spacing={8}
                   >
                     {result.element}
