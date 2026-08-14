@@ -7,13 +7,10 @@ const post = (pluginMessage: Record<string, unknown>) => {
 };
 
 function App() {
-  // The widget tells us which panel to show and whether a token is already
-  // stored. It never sends the token itself back to the iframe.
-  const [view, setView] = useState<"url" | "token" | "markdown">("url");
-  const [hasToken, setHasToken] = useState(false);
+  // The widget tells us which panel to show.
+  const [view, setView] = useState<"url" | "markdown">("url");
   const [error, setError] = useState("");
   const [url, setUrl] = useState("");
-  const [token, setToken] = useState("");
   const [markdown, setMarkdown] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -21,14 +18,7 @@ function App() {
     const onMessage = (event: MessageEvent) => {
       const msg = event.data?.pluginMessage;
       if (msg?.type !== "init") return;
-      setView(
-        msg.view === "token"
-          ? "token"
-          : msg.view === "markdown"
-          ? "markdown"
-          : "url"
-      );
-      setHasToken(Boolean(msg.hasToken));
+      setView(msg.view === "markdown" ? "markdown" : "url");
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
@@ -53,9 +43,7 @@ function App() {
     try {
       parseHackMDUrl(url);
       setError("");
-      // One message: the widget must store the token before it reads it back to
-      // fetch, so URL and token can't be two racing messages.
-      post({ type: "url", value: url, token: token.trim() || undefined });
+      post({ type: "url", value: url });
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -73,42 +61,6 @@ function App() {
     setError("");
     post({ type: "markdown", value: markdown });
   };
-
-  if (view === "token") {
-    return (
-      <div className="App" ref={rootRef}>
-        <div className="field">
-          <label className="label">HackMD API token</label>
-          <input
-            className="input"
-            type="password"
-            placeholder={
-              hasToken ? "Enter a new token to replace it" : "Paste your token"
-            }
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-          />
-        </div>
-        <p className="hint">
-          Create one in HackMD under Settings → API. Stored on this device only
-          — never saved to the Figma file or shared with collaborators.
-        </p>
-        <div className="actions">
-          <button onClick={() => post({ type: "token", value: token.trim() })}>
-            Save token
-          </button>
-          {hasToken && (
-            <button
-              className="secondary"
-              onClick={() => post({ type: "clear-token" })}
-            >
-              Remove token
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
 
   if (view === "markdown") {
     return (
@@ -141,9 +93,8 @@ function App() {
         />
       </div>
       <p className="hint">
-        {hasToken
-          ? "API token saved. Manage it from the gear icon in the toolbar."
-          : "Public notes load right away. For private notes, add a token from the gear icon in the toolbar."}
+        Public notes and notes shared with "Anyone with the link" load right
+        away.
       </p>
       {error && <p className="error">{error}</p>}
       <button onClick={handleSubmit}>Load note</button>

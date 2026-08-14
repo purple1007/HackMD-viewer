@@ -5,10 +5,14 @@ import { LinkIcon, LogoIcon, LogoWordMark } from "./icons";
 import { MD_CONST } from "../constants/markdown";
 
 interface HackMDButtonProps {
-  onClick: () => Promise<void>;
+  onLoadUrl: () => Promise<void>;
+  onPasteMarkdown: () => Promise<void>;
 }
 
-export const HackMDButton = ({ onClick }: HackMDButtonProps) => {
+export const HackMDButton = ({
+  onLoadUrl,
+  onPasteMarkdown,
+}: HackMDButtonProps) => {
   return (
     <AutoLayout
       name="Frame7"
@@ -122,38 +126,60 @@ export const HackMDButton = ({ onClick }: HackMDButtonProps) => {
             fontSize={12}
             lineHeight={18}
           >
-            Public notes load right away. For private or team notes, add an API
-            token from the toolbar.
+            Paste Markdown to render it directly, or load a public HackMD note
+            by its link.
           </Text>
         </AutoLayout>
       </AutoLayout>
 
+      {/* Paste Markdown is the primary action; loading a note is secondary. */}
       <AutoLayout
-        name="Button"
+        name="Primary Button"
         fill={MD_CONST.COLOR.PRIMARY}
-        hoverStyle={{
-          fill: "#625aff",
-        }}
+        hoverStyle={{ fill: "#625aff" }}
         cornerRadius={8}
         overflow="visible"
         spacing={5}
-        padding={{
-          vertical: 8,
-          horizontal: 12,
-        }}
+        padding={{ vertical: 8, horizontal: 12 }}
         width="fill-parent"
         horizontalAlignItems="center"
         verticalAlignItems="center"
-        onClick={onClick}
+        onClick={onPasteMarkdown}
       >
         <Text
-          name="Get started"
+          name="Paste Markdown"
           fill="#FFF"
           fontFamily="Inter"
-          fontSize={20}
+          fontSize={18}
           fontWeight={500}
         >
-          Get started
+          Paste Markdown
+        </Text>
+      </AutoLayout>
+
+      <AutoLayout
+        name="Secondary Button"
+        fill="#FFF"
+        stroke={MD_CONST.COLOR.PRIMARY}
+        strokeWidth={1}
+        hoverStyle={{ fill: "#F3F2FF" }}
+        cornerRadius={8}
+        overflow="visible"
+        spacing={5}
+        padding={{ vertical: 8, horizontal: 12 }}
+        width="fill-parent"
+        horizontalAlignItems="center"
+        verticalAlignItems="center"
+        onClick={onLoadUrl}
+      >
+        <Text
+          name="Load HackMD note"
+          fill={MD_CONST.COLOR.PRIMARY}
+          fontFamily="Inter"
+          fontSize={18}
+          fontWeight={500}
+        >
+          Load HackMD note
         </Text>
       </AutoLayout>
     </AutoLayout>

@@ -1,19 +1,14 @@
 const { widget } = figma;
-const { AutoLayout, Text, useSyncedState, usePropertyMenu } = widget;
+const { AutoLayout, Text, useSyncedState, usePropertyMenu, useWidgetNodeId } =
+  widget;
 
 import { MarkdownTreeRenderer } from "./MarkdownTreeRenderer";
 import { MD_CONST } from "./constants/markdown";
 import { fetchNote, HackMDError, parseHackMDUrl } from "./api/hackmd";
-import { clearToken, getToken, setToken } from "./utils/token";
 
 import { HackMDButton } from "./components/hackMDButton";
 import { ContentLayout } from "./components/contentLayout";
-import {
-  GearIcon,
-  MarkdownIcon,
-  RefreshIcon,
-  UrlLinkIcon,
-} from "./components/icons";
+import { MarkdownIcon, RefreshIcon, UrlLinkIcon } from "./components/icons";
 
 /** Widget width choices offered in the toolbar (value in px, as a string). */
 const WIDTH_OPTIONS = [
@@ -23,24 +18,23 @@ const WIDTH_OPTIONS = [
 ];
 
 const UI_WIDTH = 320;
+/** Gap between the current widget and a newly spawned sibling. */
+const SPAWN_GAP = 48;
 
-/** Opens the iframe and resolves once it posts a message back (or is closed). */
-type SettingsView = "url" | "token" | "markdown";
+type SettingsView = "url" | "markdown";
 
 const VIEW_TITLE: Record<SettingsView, string> = {
   url: "Load a HackMD note",
-  token: "HackMD API token",
   markdown: "Paste Markdown",
 };
 const VIEW_HEIGHT: Record<SettingsView, number> = {
   url: 180,
-  token: 240,
   markdown: 280,
 };
 
+/** Opens the iframe and resolves once it posts a message back (or is closed). */
 const showSettingsUI = (
   view: SettingsView,
-  hasToken: boolean,
   onMessage: (msg: any) => Promise<void>
 ) =>
   new Promise<void>((resolve) => {
@@ -49,7 +43,7 @@ const showSettingsUI = (
       height: VIEW_HEIGHT[view],
       title: VIEW_TITLE[view],
     });
-    figma.ui.postMessage({ type: "init", view, hasToken });
+    figma.ui.postMessage({ type: "init", view });
     figma.ui.onmessage = async (msg) => {
       // The iframe reports its content height so we can trim dead space.
       if (msg.type === "resize" && typeof msg.height === "number") {
@@ -62,6 +56,7 @@ const showSettingsUI = (
   });
 
 function HackMDViewer() {
+  const widgetId = useWidgetNodeId();
   const [url, setUrl] = useSyncedState("url", "");
   const [content, setContent] = useSyncedState("content", "");
   const [title, setTitle] = useSyncedState("title", "");
@@ -74,26 +69,58 @@ function HackMDViewer() {
   // Widget width in px, chosen from the toolbar dropdown.
   const [width, setWidth] = useSyncedState("width", "600");
 
+  const hasContent = Boolean(url || content);
+
+  /**
+   * Spawns a copy of this widget beside it, showing the given content, and
+   * leaves the current widget untouched. Returns false if the node can't be
+   * found (then the caller falls back to updating in place).
+   */
+  const spawnBeside = (overrides: { [key: string]: unknown }): boolean => {
+    const self = (figma as unknown as FigmaSceneApi).getNodeById(widgetId);
+    if (!self) return false;
+    const clone = self.cloneWidget({
+      loading: false,
+      error: "",
+      ...overrides,
+    });
+    clone.x = self.x + self.width + SPAWN_GAP;
+    clone.y = self.y;
+    return true;
+  };
+
   const fetchHackMDContent = async (
     hackmdUrl: string,
     // The cached canonical ids only apply to a refresh of the same note; a
     // freshly pasted URL must resolve from scratch or it could reuse them.
-    resolved?: { noteId?: string; teamPath?: string }
+    resolved?: { noteId?: string; teamPath?: string },
+    // When the widget already shows something, a newly loaded note opens in a
+    // sibling instead of replacing what's here. A refresh updates in place.
+    beside = false
   ) => {
     try {
       setLoading(true);
       setError("");
 
       const ref = parseHackMDUrl(hackmdUrl);
-      // The token is per-user and only readable from an async context.
-      const token = await getToken();
-      const note = await fetchNote(ref, token, resolved);
+      const note = await fetchNote(ref, undefined, resolved);
+      const next = {
+        url: hackmdUrl,
+        content: note.content,
+        title: note.title || "",
+        noteId: note.noteId || "",
+        teamPath: note.teamPath || "",
+        lastSyncTime: new Date().toUTCString(),
+      };
 
-      setContent(note.content);
-      setTitle(note.title || "");
-      setNoteId(note.noteId || "");
-      setTeamPath(note.teamPath || "");
-      setLastSyncTime(new Date().toUTCString());
+      if (beside && hasContent && spawnBeside(next)) return;
+
+      setUrl(next.url);
+      setContent(next.content);
+      setTitle(next.title);
+      setNoteId(next.noteId);
+      setTeamPath(next.teamPath);
+      setLastSyncTime(next.lastSyncTime);
     } catch (err) {
       // Anything that isn't a HackMDError is a raw sandbox failure (a rejected
       // fetch reads as "Failed to fetch"), which tells the reader nothing.
@@ -107,55 +134,38 @@ function HackMDViewer() {
     }
   };
 
-  const openTokenSettings = async () => {
-    const hasToken = Boolean(await getToken());
-    await showSettingsUI("token", hasToken, async (msg) => {
-      if (msg.type === "token" && msg.value) {
-        await setToken(msg.value);
-      } else if (msg.type === "clear-token") {
-        await clearToken();
-      } else {
-        return;
-      }
-      // Re-fetch with the current note using the cached ids.
-      if (url) {
-        await fetchHackMDContent(url, {
-          noteId: noteId || undefined,
-          teamPath: teamPath || undefined,
-        });
-      }
-    });
-  };
-
-  // Shows pasted markdown directly, with no HackMD source behind it.
+  // Shows pasted markdown directly, with no HackMD source behind it. Opens in a
+  // sibling when the widget already shows something.
   const showPastedMarkdown = (markdown: string) => {
-    setUrl("");
-    setNoteId("");
-    setTeamPath("");
-    setTitle("");
+    const next = {
+      url: "",
+      content: markdown,
+      title: "",
+      noteId: "",
+      teamPath: "",
+      lastSyncTime: "",
+    };
+    if (hasContent && spawnBeside(next)) return;
+    setUrl(next.url);
+    setContent(next.content);
+    setTitle(next.title);
+    setNoteId(next.noteId);
+    setTeamPath(next.teamPath);
+    setLastSyncTime(next.lastSyncTime);
     setError("");
-    setLastSyncTime("");
-    setContent(markdown);
   };
 
   // Loads a note by URL. Used by the empty-state card and the toolbar's link icon.
   const openUrlSettings = async () => {
-    const hasToken = Boolean(await getToken());
-    await showSettingsUI("url", hasToken, async (msg) => {
+    await showSettingsUI("url", async (msg) => {
       if (msg.type !== "url" || !msg.value) return;
-      // Persist the token first: fetchHackMDContent reads it back.
-      if (msg.token) await setToken(msg.token);
-      setUrl(msg.value);
-      setNoteId("");
-      setTeamPath("");
-      await fetchHackMDContent(msg.value);
+      await fetchHackMDContent(msg.value, undefined, true);
     });
   };
 
-  // Renders pasted markdown. Reached from the toolbar's markdown icon.
+  // Renders pasted markdown. Reached from the empty-state card and the toolbar.
   const openMarkdownSettings = async () => {
-    const hasToken = Boolean(await getToken());
-    await showSettingsUI("markdown", hasToken, async (msg) => {
+    await showSettingsUI("markdown", async (msg) => {
       if (msg.type === "markdown" && (msg.value || "").trim()) {
         showPastedMarkdown(msg.value);
       }
@@ -164,12 +174,7 @@ function HackMDViewer() {
 
   usePropertyMenu(
     [
-      {
-        itemType: "action" as const,
-        propertyName: "token",
-        tooltip: "API token",
-        icon: GearIcon,
-      },
+      // Refresh only makes sense for a URL-loaded note.
       ...(url
         ? [
             {
@@ -209,12 +214,12 @@ function HackMDViewer() {
       propertyValue?: string;
     }) => {
       if (propertyName === "refresh" && url) {
-        await fetchHackMDContent(url, {
-          noteId: noteId || undefined,
-          teamPath: teamPath || undefined,
-        });
-      } else if (propertyName === "token") {
-        await openTokenSettings();
+        // Refresh updates this widget in place (not a sibling).
+        await fetchHackMDContent(
+          url,
+          { noteId: noteId || undefined, teamPath: teamPath || undefined },
+          false
+        );
       } else if (propertyName === "load-url") {
         await openUrlSettings();
       } else if (propertyName === "paste-markdown") {
@@ -247,7 +252,10 @@ function HackMDViewer() {
   return (
     <AutoLayout direction="vertical" width="hug-contents">
       {isEmpty ? (
-        <HackMDButton onClick={openUrlSettings} />
+        <HackMDButton
+          onLoadUrl={openUrlSettings}
+          onPasteMarkdown={openMarkdownSettings}
+        />
       ) : (
         <ContentLayout
           lastSyncTime={lastSyncTime}
