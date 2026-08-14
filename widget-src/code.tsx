@@ -8,7 +8,12 @@ import { fetchNote, HackMDError, parseHackMDUrl } from "./api/hackmd";
 
 import { HackMDButton } from "./components/hackMDButton";
 import { ContentLayout } from "./components/contentLayout";
-import { MarkdownIcon, RefreshIcon, UrlLinkIcon } from "./components/icons";
+import {
+  EditIcon,
+  MarkdownIcon,
+  RefreshIcon,
+  UrlLinkIcon,
+} from "./components/icons";
 
 /** Widget width choices offered in the toolbar (value in px, as a string). */
 const WIDTH_OPTIONS = [
@@ -35,15 +40,18 @@ const VIEW_HEIGHT: Record<SettingsView, number> = {
 /** Opens the iframe and resolves once it posts a message back (or is closed). */
 const showSettingsUI = (
   view: SettingsView,
-  onMessage: (msg: any) => Promise<void>
+  onMessage: (msg: any) => Promise<void>,
+  // `value` pre-fills the markdown textarea (for editing); `title` overrides
+  // the window title.
+  opts?: { value?: string; title?: string }
 ) =>
   new Promise<void>((resolve) => {
     figma.showUI(__html__, {
       width: UI_WIDTH,
       height: VIEW_HEIGHT[view],
-      title: VIEW_TITLE[view],
+      title: opts?.title ?? VIEW_TITLE[view],
     });
-    figma.ui.postMessage({ type: "init", view });
+    figma.ui.postMessage({ type: "init", view, value: opts?.value });
     figma.ui.onmessage = async (msg) => {
       // The iframe reports its content height so we can trim dead space.
       if (msg.type === "resize" && typeof msg.height === "number") {
@@ -172,6 +180,24 @@ function HackMDViewer() {
     });
   };
 
+  // Edits the markdown already shown here, updating it in place (not a sibling).
+  // The panel opens pre-filled with the current source.
+  const openEditMarkdown = async () => {
+    await showSettingsUI(
+      "markdown",
+      async (msg) => {
+        if (msg.type === "markdown" && (msg.value || "").trim()) {
+          setContent(msg.value);
+          setError("");
+        }
+      },
+      { value: content, title: "Edit Markdown" }
+    );
+  };
+
+  // Pasted markdown: no source url, but there is content.
+  const isMarkdown = !url && Boolean(content);
+
   usePropertyMenu(
     [
       // Refresh only makes sense for a URL-loaded note.
@@ -182,6 +208,17 @@ function HackMDViewer() {
               propertyName: "refresh",
               tooltip: "Refresh",
               icon: RefreshIcon,
+            },
+          ]
+        : []),
+      // Edit is offered only when this widget shows pasted markdown.
+      ...(isMarkdown
+        ? [
+            {
+              itemType: "action" as const,
+              propertyName: "edit-markdown",
+              tooltip: "Edit Markdown",
+              icon: EditIcon,
             },
           ]
         : []),
@@ -224,6 +261,8 @@ function HackMDViewer() {
         await openUrlSettings();
       } else if (propertyName === "paste-markdown") {
         await openMarkdownSettings();
+      } else if (propertyName === "edit-markdown") {
+        await openEditMarkdown();
       } else if (propertyName === "width" && propertyValue) {
         setWidth(propertyValue);
       }

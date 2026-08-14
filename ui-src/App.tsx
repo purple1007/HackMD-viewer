@@ -12,6 +12,8 @@ function App() {
   const [error, setError] = useState("");
   const [url, setUrl] = useState("");
   const [markdown, setMarkdown] = useState("");
+  // Editing pre-filled markdown vs. pasting fresh — changes the button label.
+  const [editing, setEditing] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -19,6 +21,10 @@ function App() {
       const msg = event.data?.pluginMessage;
       if (msg?.type !== "init") return;
       setView(msg.view === "markdown" ? "markdown" : "url");
+      if (typeof msg.value === "string" && msg.value) {
+        setMarkdown(msg.value);
+        setEditing(true);
+      }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
@@ -75,7 +81,9 @@ function App() {
           />
         </div>
         {error && <p className="error">{error}</p>}
-        <button onClick={handleRenderMarkdown}>Render Markdown</button>
+        <button onClick={handleRenderMarkdown}>
+          {editing ? "Save changes" : "Render Markdown"}
+        </button>
       </div>
     );
   }
