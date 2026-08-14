@@ -1,3 +1,7 @@
+* {
+  box-sizing: border-box;
+}
+
 p {
   margin: 0;
 }
@@ -5,24 +9,49 @@ p {
 .App {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: 260px;
-  padding: 10px;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a1a1a;
 }
 
 .input,
-input[type="text"] {
-  border: 1px solid #dddd;
+input[type="text"],
+input[type="password"] {
+  width: 100%;
+  border: 1px solid #e0e0e0;
   padding: 8px 10px;
-  border-radius: 4px;
-  background-color: rgb(240, 240, 240);
+  border-radius: 6px;
+  background-color: #f5f5f5;
+  font-size: 13px;
+  color: #1a1a1a;
 }
+
+.input:focus,
+input:focus {
+  outline: none;
+  border-color: #564dff;
+  background-color: #fff;
+}
+
 button {
   background-color: #564dff;
   color: white;
-  padding: 6px 12px;
-  font-size: 16px;
-  border-radius: 4px;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 6px;
   border: none;
   width: 100%;
   cursor: pointer;
@@ -32,8 +61,56 @@ button:hover {
   background-color: #625aff;
 }
 
+button.secondary {
+  background-color: transparent;
+  color: #747474;
+  border: 1px solid #e0e0e0;
+  font-weight: 500;
+}
+
+button.secondary:hover {
+  background-color: #f5f5f5;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hint {
+  color: #747474;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .error {
-  color: rgb(243, 91, 91);
-  padding: 0px;
-  text-align: left;
+  color: #f35b5b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.textarea {
+  min-height: 96px;
+  max-height: 240px;
+  resize: vertical;
+  line-height: 1.45;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #a0a0a0;
+  font-size: 11px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e0e0e0;
 }

@@ -1,116 +1,123 @@
 const { widget } = figma;
 
-const { AutoLayout, Text, Span, SVG } = widget;
+const { AutoLayout, Text, Span, SVG, Line } = widget;
 import { getTextStyle, TextStyle } from "./utils/styles";
 import MarkdownIt from "markdown-it";
 import { full as emoji } from "markdown-it-emoji";
 import markdownitContainer from "markdown-it-container";
+import markdownitAbbr from "markdown-it-abbr";
+import markdownitFootnote from "markdown-it-footnote";
+import markdownitMark from "markdown-it-mark";
+import markdownitIns from "markdown-it-ins";
+import markdownitSub from "markdown-it-sub";
+import markdownitSup from "markdown-it-sup";
+import markdownitRuby from "markdown-it-ruby";
+import markdownitFrontMatter from "markdown-it-front-matter";
 import { MD_CONST } from "./constants/markdown";
-import { ImageRenderer } from "./renderer/ImageRenderer";
-import { DotByLevel } from "./components/icons";
-import YAML from 'js-yaml';
+import { BulletByLevel, CheckIcon, UnCheckIcon } from "./components/icons";
+import YAML from "js-yaml";
+
+type CellAlign = "left" | "center" | "right";
+
+/** A single styled text run, used to collapse a lone Span into its Text. */
+interface SpanRecord {
+  props: any;
+  content: string;
+}
+
+/**
+ * Context that flows down the token tree alongside the text style: things a
+ * child needs to know about its ancestors but that aren't styling.
+ */
+interface TreeContext {
+  /** Rows inside <thead> get the shaded background. */
+  inTableHead?: boolean;
+  /** Alignment declared by the enclosing th/td. */
+  cellAlign?: CellAlign;
+  /** The enclosing list; `next` is mutated as items are emitted. */
+  list?: { ordered: boolean; next: number };
+}
+
+/** Renders raw HTML as plain text — a widget can't render markup. */
+const htmlToText = (html: string): string =>
+  html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li|tr|h[1-6])>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#(?:39|x27);/g, "'")
+    .replace(/&amp;/g, "&")
+    .trim();
+
+/**
+ * Built once, not per render. A widget re-renders on every state change, and
+ * constructing the parser with its twelve plugins costs ~1.3ms each time.
+ */
+const md = (() => {
+  const instance = new MarkdownIt("default", {
+    html: true,
+    // Match HackMD: bare URLs become links, but no smart-quote substitution.
+    linkify: true,
+    typographer: false,
+  });
+
+  instance.use(markdownitAbbr);
+  instance.use(markdownitFootnote);
+  instance.use(markdownitMark);
+  instance.use(markdownitIns);
+  instance.use(markdownitSub);
+  instance.use(markdownitSup);
+  instance.use(markdownitRuby);
+  instance.use(emoji);
+  instance.use(markdownitContainer, "success");
+  instance.use(markdownitContainer, "info");
+  instance.use(markdownitContainer, "warning");
+  instance.use(markdownitContainer, "danger");
+  // The front matter body is rendered from the token instead of the callback.
+  instance.use(markdownitFrontMatter, () => {});
+  return instance;
+})();
+
+/**
+ * Rendering is synchronous and re-runs on every state change — including ones
+ * that don't touch the content, such as picking a new width. Memoise the tree
+ * by source so those renders don't re-parse and rebuild it. Bounded because a
+ * file can hold several widgets, which share this module scope.
+ */
+const TREE_CACHE_LIMIT = 8;
+const treeCache = new Map<string, FigmaDeclarativeNode>();
 
 export class MarkdownTreeRenderer {
   // New function: Convert markdown-it tokens to a React-like tree and render them.
-  static renderMarkdownAsTree(markdown: string): JSX.Element {
-    const md = new MarkdownIt("default", {
-      html: true,
-      typographer: true,
-    });
-
-    md.use(require("markdown-it-abbr"));
-    md.use(require("markdown-it-footnote"));
-    md.use(require("markdown-it-mark"));
-    md.use(require("markdown-it-ins"));
-    md.use(require("markdown-it-sub"));
-    md.use(require("markdown-it-sup"));
-    md.use(require("markdown-it-ruby"));
-    md.use(emoji);
-    md.use(markdownitContainer, "success");
-    md.use(markdownitContainer, "info");
-    md.use(markdownitContainer, "warning");
-    md.use(markdownitContainer, "danger");
-    md.use(require('markdown-it-front-matter'), function(fm) {
-    });
+  static renderMarkdownAsTree(markdown: string): FigmaDeclarativeNode {
+    const cached = treeCache.get(markdown);
+    if (cached) return cached;
 
     const tokens = md.parse(markdown, {});
-
-    // Process tokens to handle images at block level
-    const processedTokens = tokens.reduce(
-      (acc: any[], token: any, index: number) => {
-        if (token.type === "inline" && token.children) {
-          // Find all image indices in children
-          const imageIndices = token.children
-            .map((t: any, i: number) => (t.type === "image" ? i : -1))
-            .filter((i: number) => i !== -1);
-
-          if (imageIndices.length === 0) {
-            // No images, just add the token as is
-            acc.push(token);
-          } else {
-            // Split the children around images
-            let lastIndex = 0;
-            imageIndices.forEach((imgIndex: number) => {
-              // Add text before image if exists
-              const beforeImage = token.children.slice(lastIndex, imgIndex);
-              if (beforeImage.length > 0) {
-                acc.push({
-                  ...token,
-                  children: beforeImage,
-                });
-              }
-
-              // Close paragraph before image
-              if (tokens[index - 1]?.type === "paragraph_open") {
-                acc.push({ type: "paragraph_close" });
-              }
-
-              // Add the image token
-              acc.push(token.children[imgIndex]);
-
-              // Open new paragraph after image
-              if (tokens[index + 1]?.type === "paragraph_close") {
-                acc.push({ type: "paragraph_open" });
-              }
-
-              lastIndex = imgIndex + 1;
-            });
-
-            // Add remaining text after last image if exists
-            const afterLastImage = token.children.slice(lastIndex);
-            if (afterLastImage.length > 0) {
-              acc.push({
-                ...token,
-                children: afterLastImage,
-              });
-            }
-          }
-        } else {
-          acc.push(token);
-        }
-        return acc;
-      },
-      []
-    );
-
-    console.log(processedTokens, "processedTokens");
-
-    const treeResult = this.tokenToTree(processedTokens, 0);
-    console.log(treeResult, "treeResult");
-    return (
+    const treeResult = this.tokenToTree(tokens, 0);
+    const tree = (
       <AutoLayout direction="vertical" width="fill-parent" spacing={10}>
         {treeResult.element}
       </AutoLayout>
     );
+
+    if (treeCache.size >= TREE_CACHE_LIMIT) {
+      treeCache.clear();
+    }
+    treeCache.set(markdown, tree);
+    return tree;
   }
 
   static renderBlockComponent(
     componentType: string,
     index: number,
-    children: JSX.Element[],
+    children: FigmaDeclarativeNode[],
     token?: any,
     style: TextStyle = {}
-  ): JSX.Element {
+  ): FigmaDeclarativeNode {
     switch (componentType) {
       case "Text":
         return figma.widget.h(
@@ -119,6 +126,10 @@ export class MarkdownTreeRenderer {
           children
         );
       case "p":
+        // The common case is a single fill-parent Text (or inline row), which
+        // lays out identically without a wrapper — and a wrapper per paragraph
+        // is a large share of the node count on a long note.
+        if (children.length === 1) return children[0];
         return (
           <AutoLayout
             width="fill-parent"
@@ -143,40 +154,29 @@ export class MarkdownTreeRenderer {
               height="fill-parent"
               fill={MD_CONST.COLOR.GRAY}
             />
-            <AutoLayout
-              width="fill-parent"
-              direction="horizontal"
-              spacing={2}
-              wrap
-            >
+            <AutoLayout width="fill-parent" direction="vertical" spacing={10}>
               {children}
             </AutoLayout>
           </AutoLayout>
         );
-      case "image":
-        const srcAttr = token?.attrs?.find(
-          ([attr]: [string, string]) => attr === "src"
-        );
-        const src = srcAttr?.[1] || "";
-        return ImageRenderer.renderImage(
-          {
-            type: "image",
-            src,
-          },
-          index
-        );
       case "hr":
+        // A transparent box supplies the vertical breathing room; the Line is
+        // the actual 1px rule. (Padding on a filled box made a ~21px grey bar.)
         return (
           <AutoLayout
             key={index}
             width="fill-parent"
-            height={1}
-            fill={MD_CONST.COLOR.GRAY}
             padding={{ vertical: 10 }}
-          />
+          >
+            <Line length="fill-parent" stroke={MD_CONST.COLOR.GRAY} />
+          </AutoLayout>
         );
       case "code_block":
-      case "fence":
+      case "fence": {
+        // `token.info` holds the fence info string, e.g. ```ts=  -> "ts="
+        const language = String(token.info ?? "")
+          .trim()
+          .split(/[\s=]/)[0];
         return (
           <AutoLayout
             key={index}
@@ -184,8 +184,19 @@ export class MarkdownTreeRenderer {
             direction="vertical"
             fill={MD_CONST.COLOR.CODE_BG}
             padding={16}
+            spacing={8}
             cornerRadius={8}
           >
+            {language ? (
+              <Text
+                fontFamily="JetBrains Mono"
+                fontSize={12}
+                fill={MD_CONST.COLOR.GRAY}
+                textCase="lower"
+              >
+                {language}
+              </Text>
+            ) : null}
             <Text
               width="fill-parent"
               fontFamily="JetBrains Mono"
@@ -193,10 +204,20 @@ export class MarkdownTreeRenderer {
               fill={MD_CONST.COLOR.BLACK}
               lineHeight={21}
             >
-              {token.content}
+              {String(token.content ?? "").replace(/\n+$/, "")}
             </Text>
           </AutoLayout>
         );
+      }
+      case "html_block": {
+        const text = htmlToText(token?.content ?? "");
+        if (!text) return <AutoLayout key={index} hidden />;
+        return (
+          <Text key={index} width="fill-parent" {...getTextStyle(style)}>
+            {text}
+          </Text>
+        );
+      }
       case "footnote_anchor":
         return (
           <Text key={index} {...getTextStyle({ footnote: true })}>
@@ -204,7 +225,6 @@ export class MarkdownTreeRenderer {
           </Text>
         );
       default:
-        console.log("unsupported block component", componentType, token);
         return (
           <Text key={index}>
             Component {JSON.stringify(componentType)} not supported
@@ -213,12 +233,38 @@ export class MarkdownTreeRenderer {
     }
   }
 
+  /**
+   * Looks ahead from a `list_item_open` for the item's first inline token and,
+   * if it starts with a task-list marker, strips the marker and reports its
+   * checked state. Returns null for ordinary list items.
+   */
+  private static takeTaskMarker(
+    tokens: any[],
+    listItemIndex: number
+  ): { checked: boolean } | null {
+    for (let i = listItemIndex + 1; i < tokens.length; i++) {
+      const token = tokens[i];
+      if (token.type === "inline") {
+        const first = token.children?.[0];
+        if (first?.type !== "text") return null;
+        const match = /^\[([ xX])\]\s+/.exec(first.content);
+        if (!match) return null;
+        first.content = first.content.slice(match[0].length);
+        return { checked: match[1] !== " " };
+      }
+      // Only the item's own opening wrapper may sit before its first inline.
+      if (token.type !== "paragraph_open") return null;
+    }
+    return null;
+  }
+
   private static tokenToTree(
     tokens: any[],
     index: number = 0,
-    style: TextStyle = {}
-  ): { element: JSX.Element[]; newIndex: number } {
-    const elems: JSX.Element[] = [];
+    style: TextStyle = {},
+    ctx: TreeContext = {}
+  ): { element: FigmaDeclarativeNode[]; newIndex: number } {
+    const elems: FigmaDeclarativeNode[] = [];
     while (index < tokens.length) {
       const token = tokens[index];
 
@@ -228,47 +274,54 @@ export class MarkdownTreeRenderer {
       switch (token.type) {
         case "front_matter": {
           try {
-            let yamlData = YAML.load(token.meta);
-            const rows = Object.entries(yamlData).map(([key, value], rowIndex) => {
-              // Simple key using property key and row index
-              return (
-                <AutoLayout
-                  key={`${key}-${rowIndex}`}
-                  width="fill-parent"
-                  direction="horizontal"
-                  stroke={MD_CONST.COLOR.GRAY}
-                  strokeWidth={1}
-                >
+            const yamlData = (YAML.load(token.meta) ?? {}) as Record<
+              string,
+              unknown
+            >;
+            const rows = Object.entries(yamlData).map(
+              ([key, value], rowIndex) => {
+                // Simple key using property key and row index
+                return (
                   <AutoLayout
-                    padding={8}
+                    key={`${key}-${rowIndex}`}
                     width="fill-parent"
-                    fill={MD_CONST.COLOR.CODE_BG}
+                    direction="horizontal"
+                    stroke={MD_CONST.COLOR.GRAY}
+                    strokeWidth={1}
                   >
-                    <Text
+                    <AutoLayout
+                      padding={8}
                       width="fill-parent"
-                      {...getTextStyle({ bold: true })}
+                      fill={MD_CONST.COLOR.CODE_BG}
                     >
-                      {key}
-                    </Text>
-                  </AutoLayout>
-                  <AutoLayout
-                    padding={8}
-                    width="fill-parent"
-                    height="fill-parent"
-                    verticalAlignItems="baseline"
-                  >
-                    <Text
+                      <Text
+                        width="fill-parent"
+                        {...getTextStyle({ bold: true })}
+                      >
+                        {key}
+                      </Text>
+                    </AutoLayout>
+                    <AutoLayout
+                      padding={8}
                       width="fill-parent"
-                      fontFamily="JetBrains Mono"
-                      fontSize={14}
-                      lineHeight={28}
+                      height="fill-parent"
+                      verticalAlignItems="baseline"
                     >
-                      {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
-                    </Text>
+                      <Text
+                        width="fill-parent"
+                        fontFamily="JetBrains Mono"
+                        fontSize={14}
+                        lineHeight={28}
+                      >
+                        {typeof value === "object"
+                          ? JSON.stringify(value, null, 2)
+                          : String(value)}
+                      </Text>
+                    </AutoLayout>
                   </AutoLayout>
-                </AutoLayout>
-              );
-            });
+                );
+              }
+            );
 
             elems.push(
               <AutoLayout
@@ -285,7 +338,7 @@ export class MarkdownTreeRenderer {
             );
             index++;
           } catch (e) {
-            console.error('Failed to parse front matter:', e);
+            console.error("Failed to parse front matter:", e);
             index++;
           }
           break;
@@ -296,27 +349,44 @@ export class MarkdownTreeRenderer {
             ...style,
             heading: { level },
           };
-          const result = this.tokenToTree(tokens, index + 1, newStyle);
+          const result = this.tokenToTree(tokens, index + 1, newStyle, ctx);
+          // A heading is nearly always one fill-parent Text, which lays out the
+          // same without a wrapper. One saved node per heading.
           elems.push(
-            <AutoLayout key={tokenKey} direction="horizontal" width="fill-parent" wrap>
-              {result.element}
-            </AutoLayout>
+            result.element.length === 1 ? (
+              result.element[0]
+            ) : (
+              <AutoLayout
+                key={tokenKey}
+                direction="horizontal"
+                width="fill-parent"
+                wrap
+              >
+                {result.element}
+              </AutoLayout>
+            )
           );
           index = result.newIndex;
           break;
         }
         case "paragraph_open": {
-          const result = this.tokenToTree(tokens, index + 1, style);
+          const result = this.tokenToTree(tokens, index + 1, style, ctx);
+          // Same for paragraphs — the single most common block on a note, so
+          // this wrapper alone was a large share of the total node count.
           elems.push(
-            <AutoLayout
-              key={tokenKey}
-              direction="horizontal"
-              width="fill-parent"
-              wrap
-              spacing={3}
-            >
-              {result.element}
-            </AutoLayout>
+            result.element.length === 1 ? (
+              result.element[0]
+            ) : (
+              <AutoLayout
+                key={tokenKey}
+                direction="horizontal"
+                width="fill-parent"
+                wrap
+                spacing={3}
+              >
+                {result.element}
+              </AutoLayout>
+            )
           );
           index = result.newIndex;
           break;
@@ -326,7 +396,8 @@ export class MarkdownTreeRenderer {
             token.children,
             0,
             style,
-            tokenKey // Pass tokenKey to inlineTokenToTree
+            tokenKey, // Pass tokenKey to inlineTokenToTree
+            ctx.cellAlign
           );
           elems.push(element);
           index++;
@@ -338,7 +409,7 @@ export class MarkdownTreeRenderer {
           } else if (token.type.endsWith("_open")) {
             switch (token.type) {
               case "footnote_block_open": {
-                const result = this.tokenToTree(tokens, index + 1, style);
+                const result = this.tokenToTree(tokens, index + 1, style, ctx);
                 elems.push(
                   <AutoLayout
                     key={tokenKey}
@@ -359,7 +430,7 @@ export class MarkdownTreeRenderer {
                 break;
               }
               case "footnote_open": {
-                const result = this.tokenToTree(tokens, index + 1, style);
+                const result = this.tokenToTree(tokens, index + 1, style, ctx);
                 elems.push(
                   <AutoLayout
                     key={tokenKey}
@@ -390,7 +461,7 @@ export class MarkdownTreeRenderer {
               case "container_info_open":
               case "container_warning_open":
               case "container_danger_open": {
-                const result = this.tokenToTree(tokens, index + 1, style);
+                const result = this.tokenToTree(tokens, index + 1, style, ctx);
                 const bgColor =
                   token.type === "container_success_open"
                     ? "#D9F9E5"
@@ -404,8 +475,9 @@ export class MarkdownTreeRenderer {
                     key={tokenKey}
                     width="fill-parent"
                     direction="vertical"
-                    padding={10}
+                    padding={12}
                     fill={bgColor}
+                    cornerRadius={8}
                     spacing={8}
                   >
                     {result.element}
@@ -417,7 +489,23 @@ export class MarkdownTreeRenderer {
               case "bullet_list_open":
               case "ordered_list_open": {
                 const isNested = token.level > 0;
-                const result = this.tokenToTree(tokens, index + 1, style);
+                const startAttr = token.attrs?.find(
+                  ([attr]: [string, string]) => attr === "start"
+                )?.[1];
+                // A fresh counter per list so nested lists don't share numbering.
+                const listCtx: TreeContext = {
+                  ...ctx,
+                  list:
+                    token.type === "ordered_list_open"
+                      ? { ordered: true, next: Number(startAttr ?? 1) || 1 }
+                      : { ordered: false, next: 1 },
+                };
+                const result = this.tokenToTree(
+                  tokens,
+                  index + 1,
+                  style,
+                  listCtx
+                );
                 if (isNested) {
                   elems.push(
                     <AutoLayout
@@ -446,38 +534,68 @@ export class MarkdownTreeRenderer {
                 break;
               }
               case "list_item_open": {
-                const result = this.tokenToTree(tokens, index + 1, style);
+                // `- [ ] foo` / `- [x] foo` — markdown-it has no notion of task
+                // lists, so strip the marker off the item's first text token and
+                // render a checkbox instead of a bullet.
+                const task = MarkdownTreeRenderer.takeTaskMarker(tokens, index);
+                const result = this.tokenToTree(tokens, index + 1, style, ctx);
                 // Use the token.level + 1 to determine the nesting level
                 // +1 because level is 0-based but we want 1-based for our DotByLevel function
                 const listLevel = token.level + 1;
+                const ordered = ctx.list?.ordered === true;
+                const marker = ctx.list && ordered ? ctx.list.next++ : 0;
+                const bullet = BulletByLevel(listLevel);
                 elems.push(
                   <AutoLayout
                     key={tokenKey}
                     direction="horizontal"
-                    spacing={3}
+                    spacing={6}
                     verticalAlignItems="start"
                     width="fill-parent"
                   >
-                    <AutoLayout padding={{ top: 8 }}>
-                      <SVG src={DotByLevel(listLevel)} />
-                    </AutoLayout>
-                    <AutoLayout width="fill-parent" direction="vertical">
-                      {result.element}
-                    </AutoLayout>
+                    {task ? (
+                      // The checkbox is a small glyph; nudge it down to sit on
+                      // the text's first line.
+                      <AutoLayout padding={{ top: 4 }}>
+                        <SVG src={task.checked ? CheckIcon : UnCheckIcon} />
+                      </AutoLayout>
+                    ) : ordered ? (
+                      // Plain text at the content's line height and top-aligned,
+                      // so "1." and "57." line up with the item and never wrap.
+                      <Text {...getTextStyle(style)}>{`${marker}.`}</Text>
+                    ) : (
+                      // A character rather than an SVG: same look, one node
+                      // instead of two, and no vector parsing per item.
+                      <Text {...getTextStyle(style)} fill={bullet.fill}>
+                        {bullet.char}
+                      </Text>
+                    )}
+                    {result.element.length === 1 ? (
+                      result.element[0]
+                    ) : (
+                      <AutoLayout width="fill-parent" direction="vertical">
+                        {result.element}
+                      </AutoLayout>
+                    )}
                   </AutoLayout>
                 );
                 index = result.newIndex;
                 break;
               }
               case "table_open": {
-                const result = this.tokenToTree(tokens, index + 1, style);
+                const result = this.tokenToTree(tokens, index + 1, style, ctx);
                 elems.push(
                   <AutoLayout
                     key={tokenKey}
                     width="fill-parent"
                     direction="vertical"
-                    stroke={MD_CONST.COLOR.GRAY}
-                    strokeWidth={1}
+                    // The grid lines are this fill showing through 1px gaps
+                    // (spacing + padding), with each cell painting its own fill
+                    // on top. That keeps every line a true 1px — per-row strokes
+                    // were 1px each but adjacent ones read as 2px.
+                    fill={MD_CONST.COLOR.GRAY}
+                    spacing={1}
+                    padding={1}
                     cornerRadius={4}
                     overflow="hidden"
                   >
@@ -489,12 +607,17 @@ export class MarkdownTreeRenderer {
               }
               case "thead_open":
               case "tbody_open": {
-                const result = this.tokenToTree(tokens, index + 1, style);
+                const result = this.tokenToTree(tokens, index + 1, style, {
+                  ...ctx,
+                  inTableHead: token.type === "thead_open",
+                });
                 elems.push(
                   <AutoLayout
                     key={tokenKey}
                     width="fill-parent"
                     direction="vertical"
+                    fill={MD_CONST.COLOR.GRAY}
+                    spacing={1}
                   >
                     {result.element}
                   </AutoLayout>
@@ -503,20 +626,14 @@ export class MarkdownTreeRenderer {
                 break;
               }
               case "tr_open": {
-                const result = this.tokenToTree(tokens, index + 1, style);
+                const result = this.tokenToTree(tokens, index + 1, style, ctx);
                 elems.push(
                   <AutoLayout
                     key={tokenKey}
                     width="fill-parent"
                     direction="horizontal"
-                    stroke={MD_CONST.COLOR.GRAY}
-                    strokeWidth={1}
-                    fill={
-                      token.tag === "tr" &&
-                      tokens[index - 2]?.type === "thead_open"
-                        ? MD_CONST.COLOR.CODE_BG
-                        : undefined
-                    }
+                    fill={MD_CONST.COLOR.GRAY}
+                    spacing={1}
                   >
                     {result.element}
                   </AutoLayout>
@@ -533,17 +650,30 @@ export class MarkdownTreeRenderer {
                 const align = token.attrs?.find(
                   ([attr]: [string, string]) => attr === "style"
                 )?.[1];
-                const textAlign = align?.includes("text-align:")
-                  ? align.split("text-align:")[1].trim()
-                  : "left";
-                const result = this.tokenToTree(tokens, index + 1, newStyle);
+                const textAlign = (
+                  align?.includes("text-align:")
+                    ? align.split("text-align:")[1].trim()
+                    : "left"
+                ) as CellAlign;
+                const result = this.tokenToTree(tokens, index + 1, newStyle, {
+                  ...ctx,
+                  cellAlign: textAlign,
+                });
                 elems.push(
                   <AutoLayout
                     key={tokenKey}
                     padding={8}
                     width="fill-parent"
-                    horizontalAlignText={
-                      textAlign as "left" | "center" | "right"
+                    // Header cells keep the shaded fill; body cells match the
+                    // card so the grid fill only shows in the 1px gaps.
+                    fill={ctx.inTableHead ? MD_CONST.COLOR.CODE_BG : "#FAFAFA"}
+                    verticalAlignItems="start"
+                    horizontalAlignItems={
+                      textAlign === "center"
+                        ? "center"
+                        : textAlign === "right"
+                        ? "end"
+                        : "start"
                     }
                   >
                     {result.element}
@@ -554,7 +684,7 @@ export class MarkdownTreeRenderer {
               }
               default: {
                 const componentType = token.tag;
-                const result = this.tokenToTree(tokens, index + 1, style);
+                const result = this.tokenToTree(tokens, index + 1, style, ctx);
                 elems.push(
                   MarkdownTreeRenderer.renderBlockComponent(
                     componentType,
@@ -576,7 +706,6 @@ export class MarkdownTreeRenderer {
                 index, // Use index for key
                 [],
                 token,
-                undefined,
                 style
               )
             );
@@ -593,25 +722,143 @@ export class MarkdownTreeRenderer {
     tokens: any[],
     index: number = 0,
     style: TextStyle = {},
-    parentKey: string = ''
-  ): { element: JSX.Element; newIndex: number } {
-    const spans: JSX.Element[] = [];
+    parentKey: string = "",
+    align?: CellAlign
+  ): { element: FigmaDeclarativeNode; newIndex: number } {
+    let spans: (string | number | FigmaVirtualNode<"span">)[] = [];
     let currentStyle = { ...style };
     let currentText = "";
     let spanCounter = 0;
+    // Mirrors `spans`. A Text holding a single uniformly styled Span can carry
+    // that styling itself, so the Span becomes one node of pure overhead — and
+    // on a typical note nearly every Text is exactly that shape.
+    let soleSpan: SpanRecord | null = null;
+    let spanPushes = 0;
+    const recordSpan = (props: any, content: string) => {
+      spanPushes++;
+      soleSpan = spanPushes === 1 ? { props, content } : null;
+    };
+
+    // A `Span` can only carry text styling, never a background or border. So
+    // inline code / highlight / kbd — which need a fill — are rendered as small
+    // AutoLayout boxes. As soon as one appears we switch from a single wrapping
+    // Text to a horizontal, wrapping row of pieces (text runs + boxes). Content
+    // with no such box keeps the single-Text path, so its wrapping is unchanged.
+    const pieces: FigmaDeclarativeNode[] = [];
+    // While inside a highlight/kbd span we buffer its plain text here.
+    let bgMode: null | "highlight" | "kbd" = null;
+    let bgText = "";
+    let bgStyle: TextStyle = {};
 
     const flushText = () => {
       if (currentText) {
+        const props = getTextStyle(currentStyle, currentStyle.href);
+        recordSpan(props, currentText);
         spans.push(
-          <Span
-            key={`${parentKey}-span-${spanCounter++}`}
-            {...getTextStyle(currentStyle, currentStyle.href)}
-          >
+          <Span key={`${parentKey}-span-${spanCounter++}`} {...props}>
             {currentText}
           </Span>
         );
         currentText = "";
       }
+    };
+
+    // Move the accumulated text spans into `pieces` as one text run. Used only
+    // once a box forces the multi-piece layout.
+    const flushSpans = () => {
+      flushText();
+      if (spans.length) {
+        pieces.push(
+          <Text key={`${parentKey}-run-${pieces.length}`} width="hug-contents">
+            {spans}
+          </Text>
+        );
+        spans = [];
+      }
+    };
+
+    const pushCodeBox = (content: string) => {
+      flushSpans();
+      pieces.push(
+        <AutoLayout
+          key={`${parentKey}-box-${pieces.length}`}
+          fill={MD_CONST.COLOR.INLINE_CODE_BG}
+          cornerRadius={4}
+          padding={{ horizontal: 5, vertical: 1 }}
+          verticalAlignItems="center"
+        >
+          <Text
+            fontFamily="JetBrains Mono"
+            fontSize={14}
+            fill={MD_CONST.COLOR.BLACK}
+          >
+            {content}
+          </Text>
+        </AutoLayout>
+      );
+    };
+
+    const pushHighlightBox = (text: string, style: TextStyle) => {
+      pieces.push(
+        <AutoLayout
+          key={`${parentKey}-box-${pieces.length}`}
+          fill={MD_CONST.COLOR.HIGHLIGHT_BG}
+          cornerRadius={3}
+          padding={{ horizontal: 3 }}
+          verticalAlignItems="center"
+        >
+          <Text {...getTextStyle(style)}>{text}</Text>
+        </AutoLayout>
+      );
+    };
+
+    const pushKbdBox = (text: string) => {
+      pieces.push(
+        <AutoLayout
+          key={`${parentKey}-box-${pieces.length}`}
+          fill={MD_CONST.COLOR.KBD_BG}
+          stroke={MD_CONST.COLOR.KBD_BORDER}
+          strokeWidth={1}
+          cornerRadius={4}
+          padding={{ horizontal: 6, vertical: 1 }}
+          verticalAlignItems="center"
+        >
+          <Text
+            fontFamily="JetBrains Mono"
+            fontSize={13}
+            fill={MD_CONST.COLOR.BLACK}
+          >
+            {text}
+          </Text>
+        </AutoLayout>
+      );
+    };
+
+    // HackMD `@username` mentions arrive as plain text in the raw markdown, so
+    // style them as links to the user's HackMD profile. Only a handle preceded
+    // by start-of-string / whitespace / an opening punctuation is treated as a
+    // mention, which keeps email local-parts (foo@bar) out.
+    const MENTION =
+      /(^|[\s(，、,])@([A-Za-z0-9](?:[A-Za-z0-9_-]*[A-Za-z0-9])?)/g;
+    const appendText = (text: string) => {
+      let last = 0;
+      let match: RegExpExecArray | null;
+      MENTION.lastIndex = 0;
+      while ((match = MENTION.exec(text))) {
+        const at = match.index + match[1].length; // index of the '@'
+        currentText += text.slice(last, at);
+        flushText();
+        const href = `https://hackmd.io/@${match[2]}`;
+        const mentionProps = getTextStyle({ ...currentStyle, href }, href);
+        recordSpan(mentionProps, `@${match[2]}`);
+        spans.push(
+          <Span key={`${parentKey}-span-${spanCounter++}`} {...mentionProps}>
+            {`@${match[2]}`}
+          </Span>
+        );
+        last = MENTION.lastIndex;
+      }
+      currentText += text.slice(last);
     };
 
     while (index < tokens.length) {
@@ -620,54 +867,94 @@ export class MarkdownTreeRenderer {
       switch (token.type) {
         case "softbreak":
           flushText();
-          spans.push(<Span key={`${parentKey}-span-${spanCounter++}`}>{" "}</Span>);
+          recordSpan({}, " ");
+          spans.push(<Span key={`${parentKey}-span-${spanCounter++}`}> </Span>);
           index++;
           break;
 
         case "text":
-          currentText += token.content;
+          // Inside a highlight/kbd span, text is buffered for its box.
+          if (bgMode) bgText += token.content;
+          else appendText(token.content);
           index++;
           break;
 
         case "code_inline":
+          pushCodeBox(token.content);
+          index++;
+          break;
+
+        case "image": {
           flushText();
+          const src =
+            token.attrs?.find(
+              ([attr]: [string, string]) => attr === "src"
+            )?.[1] || "";
+          const alt = (token.content || "").trim();
+          const imgProps = getTextStyle({ ...currentStyle, href: src }, src);
+          recordSpan(imgProps, `🖼 ${alt || src}`);
           spans.push(
-            <Span
-              key={`${parentKey}-span-${spanCounter++}`}
-              {...getTextStyle({ ...currentStyle, code: true })}
-            >
+            <Span key={`${parentKey}-span-${spanCounter++}`} {...imgProps}>
+              {`🖼 ${alt || src}`}
+            </Span>
+          );
+          index++;
+          break;
+        }
+
+        case "hardbreak":
+          currentText += "\n";
+          index++;
+          break;
+
+        case "html_inline": {
+          const html = token.content.trim();
+          // <kbd>…</kbd> becomes a keycap box.
+          if (/^<kbd>$/i.test(html)) {
+            flushSpans();
+            bgMode = "kbd";
+            bgText = "";
+            index++;
+            break;
+          }
+          if (/^<\/kbd>$/i.test(html)) {
+            pushKbdBox(bgText);
+            bgMode = null;
+            index++;
+            break;
+          }
+          const text = htmlToText(token.content);
+          if (text) currentText += text;
+          else if (/<br\s*\/?>/i.test(token.content)) currentText += "\n";
+          index++;
+          break;
+        }
+
+        case "footnote_ref": {
+          flushText();
+          const fnProps = getTextStyle({ ...currentStyle, footnote: true });
+          recordSpan(fnProps, `[${token.meta.id + 1}]`);
+          spans.push(
+            <Span key={`${parentKey}-span-${spanCounter++}`} {...fnProps}>
+              {`[${token.meta.id + 1}]`}
+            </Span>
+          );
+          index++;
+          break;
+        }
+
+        case "emoji": {
+          flushText();
+          const emojiProps = getTextStyle(currentStyle);
+          recordSpan(emojiProps, token.content);
+          spans.push(
+            <Span key={`${parentKey}-span-${spanCounter++}`} {...emojiProps}>
               {token.content}
             </Span>
           );
           index++;
           break;
-
-        case "html_inline":
-          index++;
-          break;
-
-        case "footnote_ref":
-          flushText();
-          spans.push(
-            <Span
-              key={`${parentKey}-span-${spanCounter++}`}
-              {...getTextStyle({ ...currentStyle, footnote: true })}
-            >
-              [{token.meta.id + 1}]
-            </Span>
-          );
-          index++;
-          break;
-
-        case "emoji":
-          flushText();
-          spans.push(
-            <Span key={`${parentKey}-span-${spanCounter++}`} {...getTextStyle(currentStyle)}>
-              {token.content}
-            </Span>
-          );
-          index++;
-          break;
+        }
 
         case "strong_open":
           flushText();
@@ -688,8 +975,10 @@ export class MarkdownTreeRenderer {
           break;
 
         case "mark_open":
-          flushText();
-          currentStyle = { ...currentStyle, highlight: true };
+          flushSpans();
+          bgMode = "highlight";
+          bgText = "";
+          bgStyle = { ...currentStyle };
           index++;
           break;
 
@@ -732,7 +1021,9 @@ export class MarkdownTreeRenderer {
 
         case "link_open":
           flushText();
-          const hrefAttr = token.attrs?.find(([attr]) => attr === "href");
+          const hrefAttr = token.attrs?.find(
+            ([attr]: [string, string]) => attr === "href"
+          );
           currentStyle = { ...currentStyle, href: hrefAttr?.[1] || "" };
           index++;
           break;
@@ -752,7 +1043,8 @@ export class MarkdownTreeRenderer {
                 currentStyle = { ...currentStyle, strikethrough: false };
                 break;
               case "mark":
-                currentStyle = { ...currentStyle, highlight: false };
+                pushHighlightBox(bgText, bgStyle);
+                bgMode = null;
                 break;
               case "ins":
                 currentStyle = { ...currentStyle, underline: false };
@@ -779,7 +1071,6 @@ export class MarkdownTreeRenderer {
             }
             index++;
           } else {
-            console.log("unhandled token", token.type, token);
             index++;
           }
           break;
@@ -787,8 +1078,57 @@ export class MarkdownTreeRenderer {
     }
 
     flushText();
+
+    // No inline box appeared: keep the single-Text path (proper text wrapping).
+    if (pieces.length === 0) {
+      // One uniformly styled run — carry its styling on the Text and drop the
+      // Span entirely. This is the shape of almost every paragraph, heading and
+      // table cell, so it removes roughly a third of all nodes on a long note.
+      const single = soleSpan as SpanRecord | null;
+      return {
+        element:
+          single && spans.length === 1 ? (
+            <Text
+              key={parentKey}
+              width="fill-parent"
+              horizontalAlignText={align ?? "left"}
+              {...single.props}
+            >
+              {single.content}
+            </Text>
+          ) : (
+            <Text
+              key={parentKey}
+              width="fill-parent"
+              horizontalAlignText={align ?? "left"}
+            >
+              {spans}
+            </Text>
+          ),
+        newIndex: index,
+      };
+    }
+
+    // A box forced the multi-piece layout: lay the runs and boxes out in a
+    // wrapping row. Text runs no longer break mid-word, which is fine for the
+    // short lines that carry inline code / highlight / kbd.
+    flushSpans();
     return {
-      element: <Text key={parentKey} width="fill-parent">{spans}</Text>,
+      element: (
+        <AutoLayout
+          key={parentKey}
+          width="fill-parent"
+          direction="horizontal"
+          wrap
+          spacing={0}
+          verticalAlignItems="center"
+          horizontalAlignItems={
+            align === "center" ? "center" : align === "right" ? "end" : "start"
+          }
+        >
+          {pieces}
+        </AutoLayout>
+      ),
       newIndex: index,
     };
   }

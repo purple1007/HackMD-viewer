@@ -5,10 +5,14 @@ import { LinkIcon, LogoIcon, LogoWordMark } from "./icons";
 import { MD_CONST } from "../constants/markdown";
 
 interface HackMDButtonProps {
-  onSuccess: (url: string, noteId: string) => Promise<void>;
+  onLoadUrl: () => Promise<void>;
+  onPasteMarkdown: () => Promise<void>;
 }
 
-export const HackMDButton = ({ onSuccess }: HackMDButtonProps) => {
+export const HackMDButton = ({
+  onLoadUrl,
+  onPasteMarkdown,
+}: HackMDButtonProps) => {
   return (
     <AutoLayout
       name="Frame7"
@@ -103,58 +107,79 @@ export const HackMDButton = ({ onSuccess }: HackMDButtonProps) => {
         horizontalAlignItems="center"
         verticalAlignItems="center"
       >
+        <AutoLayout direction="vertical" spacing={4} width="fill-parent">
+          <Text
+            name="Title"
+            fill="#747474"
+            width="fill-parent"
+            fontFamily="Inter"
+            fontSize={18}
+            fontWeight={500}
+          >
+            View a HackMD note in Figma
+          </Text>
+          <Text
+            name="Private note hint"
+            fill={MD_CONST.COLOR.GRAY}
+            width="fill-parent"
+            fontFamily="Inter"
+            fontSize={12}
+            lineHeight={18}
+          >
+            Paste Markdown to render it directly, or load a public HackMD note
+            by its link.
+          </Text>
+        </AutoLayout>
+      </AutoLayout>
+
+      {/* Paste Markdown is the primary action; loading a note is secondary. */}
+      <AutoLayout
+        name="Primary Button"
+        fill={MD_CONST.COLOR.PRIMARY}
+        hoverStyle={{ fill: "#625aff" }}
+        cornerRadius={8}
+        overflow="visible"
+        spacing={5}
+        padding={{ vertical: 8, horizontal: 12 }}
+        width="fill-parent"
+        horizontalAlignItems="center"
+        verticalAlignItems="center"
+        onClick={onPasteMarkdown}
+      >
         <Text
-          name="Past your hackmd note into Figma"
-          fill="#747474"
-          width="fill-parent"
+          name="Paste Markdown"
+          fill="#FFF"
           fontFamily="Inter"
           fontSize={18}
           fontWeight={500}
         >
-          Paste your HackMD note into Figma
+          Paste Markdown
         </Text>
       </AutoLayout>
 
       <AutoLayout
-        name="Button"
-        fill={MD_CONST.COLOR.PRIMARY}
-        hoverStyle={{
-          fill: "#625aff",
-        }}
+        name="Secondary Button"
+        fill="#FFF"
+        stroke={MD_CONST.COLOR.PRIMARY}
+        strokeWidth={1}
+        hoverStyle={{ fill: "#F3F2FF" }}
         cornerRadius={8}
         overflow="visible"
         spacing={5}
-        padding={{
-          vertical: 8,
-          horizontal: 12,
-        }}
+        padding={{ vertical: 8, horizontal: 12 }}
         width="fill-parent"
         horizontalAlignItems="center"
         verticalAlignItems="center"
-        onClick={() => {
-          return new Promise((resolve) => {
-            figma.showUI(__html__, {
-              width: 280,
-              height: 200,
-              title: "HackMD URL setting",
-            });
-            figma.ui.onmessage = async (msg) => {
-              if (msg.type === "url" && msg.value) {
-                await onSuccess(msg.value, msg.noteId);
-                resolve();
-              }
-            };
-          });
-        }}
+        onClick={onLoadUrl}
       >
         <Text
-          name="Get started"
-          fill="#FFF"
+          name="Load HackMD note"
+          fill={MD_CONST.COLOR.PRIMARY}
           fontFamily="Inter"
-          fontSize={20}
+          fontSize={18}
           fontWeight={500}
         >
-          Get started
+          Load HackMD note
         </Text>
       </AutoLayout>
     </AutoLayout>

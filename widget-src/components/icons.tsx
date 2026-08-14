@@ -82,6 +82,44 @@ export const LinkIcon = `<svg width='18' height='19' viewBox='0 0 18 19' fill='n
 </defs>
 </svg>`;
 
+// Property-menu icons. Figma tints these to the toolbar's foreground colour, so
+// the source colour only needs to be a single visible stroke (white here).
+export const GearIcon = `<svg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+<circle cx='12' cy='12' r='3' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+</svg>`;
+
+export const RefreshIcon = `<svg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+<path d='M23 4v6h-6' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M1 20v-6h6' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+</svg>`;
+
+export const NewNoteIcon = `<svg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M14 2v6h6' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M12 18v-6M9 15h6' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+</svg>`;
+
+// Toolbar entry for loading a HackMD note by URL (a link/chain glyph).
+export const UrlLinkIcon = `<svg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+<path d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+</svg>`;
+
+// Toolbar entry for pasting Markdown (a document with text lines).
+export const MarkdownIcon = `<svg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M14 2v6h6' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M16 13H8M16 17H8M10 9H8' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+</svg>`;
+
+// Toolbar entry for editing the pasted Markdown (a pencil).
+export const EditIcon = `<svg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+<path d='M12 20h9' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+</svg>`;
+
 /**
  * Returns the appropriate dot icon based on the list nesting level.
  * Cycles back to primary style when level >= 5.
@@ -89,6 +127,29 @@ export const LinkIcon = `<svg width='18' height='19' viewBox='0 0 18 19' fill='n
  * @param level The nesting level of the list item (1-based)
  * @returns The SVG string for the appropriate dot style
  */
+/**
+ * Bullet glyphs as plain characters, mirroring the four DotByLevel styles
+ * (filled / lighter filled / hollow / square).
+ *
+ * A `Text` costs one node and no parsing, where an `SVG` costs a node plus
+ * turning an SVG string into a vector network — the single most expensive node
+ * type here, and a list produces one per item.
+ */
+export const BulletByLevel = (
+  level: number
+): { char: string; fill: string } => {
+  switch (((level - 1) % 4) + 1) {
+    case 2:
+      return { char: "•", fill: "#565656" };
+    case 3:
+      return { char: "◦", fill: "#757575" };
+    case 4:
+      return { char: "▪", fill: "#8A8A8A" };
+    default:
+      return { char: "•", fill: "#232323" };
+  }
+};
+
 export const DotByLevel = (level: number): string => {
   // Use modulo 4 to cycle through the 4 dot styles (1-4)
   // When level is 5+, it will start over from style 1

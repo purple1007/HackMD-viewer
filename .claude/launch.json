@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "iframe",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite"],
+      "autoPort": true
+    }
+  ]
+}
