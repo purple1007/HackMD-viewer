@@ -589,8 +589,13 @@ export class MarkdownTreeRenderer {
                     key={tokenKey}
                     width="fill-parent"
                     direction="vertical"
-                    stroke={MD_CONST.COLOR.GRAY}
-                    strokeWidth={1}
+                    // The grid lines are this fill showing through 1px gaps
+                    // (spacing + padding), with each cell painting its own fill
+                    // on top. That keeps every line a true 1px — per-row strokes
+                    // were 1px each but adjacent ones read as 2px.
+                    fill={MD_CONST.COLOR.GRAY}
+                    spacing={1}
+                    padding={1}
                     cornerRadius={4}
                     overflow="hidden"
                   >
@@ -611,6 +616,8 @@ export class MarkdownTreeRenderer {
                     key={tokenKey}
                     width="fill-parent"
                     direction="vertical"
+                    fill={MD_CONST.COLOR.GRAY}
+                    spacing={1}
                   >
                     {result.element}
                   </AutoLayout>
@@ -625,9 +632,8 @@ export class MarkdownTreeRenderer {
                     key={tokenKey}
                     width="fill-parent"
                     direction="horizontal"
-                    stroke={MD_CONST.COLOR.GRAY}
-                    strokeWidth={1}
-                    fill={ctx.inTableHead ? MD_CONST.COLOR.CODE_BG : undefined}
+                    fill={MD_CONST.COLOR.GRAY}
+                    spacing={1}
                   >
                     {result.element}
                   </AutoLayout>
@@ -658,6 +664,9 @@ export class MarkdownTreeRenderer {
                     key={tokenKey}
                     padding={8}
                     width="fill-parent"
+                    // Header cells keep the shaded fill; body cells match the
+                    // card so the grid fill only shows in the 1px gaps.
+                    fill={ctx.inTableHead ? MD_CONST.COLOR.CODE_BG : "#FAFAFA"}
                     verticalAlignItems="start"
                     horizontalAlignItems={
                       textAlign === "center"
