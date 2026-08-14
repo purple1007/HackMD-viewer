@@ -121,6 +121,29 @@ export const MarkdownIcon = `<svg width='16' height='16' viewBox='0 0 24 24' fil
  * @param level The nesting level of the list item (1-based)
  * @returns The SVG string for the appropriate dot style
  */
+/**
+ * Bullet glyphs as plain characters, mirroring the four DotByLevel styles
+ * (filled / lighter filled / hollow / square).
+ *
+ * A `Text` costs one node and no parsing, where an `SVG` costs a node plus
+ * turning an SVG string into a vector network — the single most expensive node
+ * type here, and a list produces one per item.
+ */
+export const BulletByLevel = (
+  level: number
+): { char: string; fill: string } => {
+  switch (((level - 1) % 4) + 1) {
+    case 2:
+      return { char: "•", fill: "#565656" };
+    case 3:
+      return { char: "◦", fill: "#757575" };
+    case 4:
+      return { char: "▪", fill: "#8A8A8A" };
+    default:
+      return { char: "•", fill: "#232323" };
+  }
+};
+
 export const DotByLevel = (level: number): string => {
   // Use modulo 4 to cycle through the 4 dot styles (1-4)
   // When level is 5+, it will start over from style 1

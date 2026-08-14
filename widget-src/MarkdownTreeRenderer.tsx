@@ -14,10 +14,16 @@ import markdownitSup from "markdown-it-sup";
 import markdownitRuby from "markdown-it-ruby";
 import markdownitFrontMatter from "markdown-it-front-matter";
 import { MD_CONST } from "./constants/markdown";
-import { CheckIcon, DotByLevel, UnCheckIcon } from "./components/icons";
+import { BulletByLevel, CheckIcon, UnCheckIcon } from "./components/icons";
 import YAML from "js-yaml";
 
 type CellAlign = "left" | "center" | "right";
+
+/** A single styled text run, used to collapse a lone Span into its Text. */
+interface SpanRecord {
+  props: any;
+  content: string;
+}
 
 /**
  * Context that flows down the token tree alongside the text style: things a
@@ -46,39 +52,63 @@ const htmlToText = (html: string): string =>
     .replace(/&amp;/g, "&")
     .trim();
 
+/**
+ * Built once, not per render. A widget re-renders on every state change, and
+ * constructing the parser with its twelve plugins costs ~1.3ms each time.
+ */
+const md = (() => {
+  const instance = new MarkdownIt("default", {
+    html: true,
+    // Match HackMD: bare URLs become links, but no smart-quote substitution.
+    linkify: true,
+    typographer: false,
+  });
+
+  instance.use(markdownitAbbr);
+  instance.use(markdownitFootnote);
+  instance.use(markdownitMark);
+  instance.use(markdownitIns);
+  instance.use(markdownitSub);
+  instance.use(markdownitSup);
+  instance.use(markdownitRuby);
+  instance.use(emoji);
+  instance.use(markdownitContainer, "success");
+  instance.use(markdownitContainer, "info");
+  instance.use(markdownitContainer, "warning");
+  instance.use(markdownitContainer, "danger");
+  // The front matter body is rendered from the token instead of the callback.
+  instance.use(markdownitFrontMatter, () => {});
+  return instance;
+})();
+
+/**
+ * Rendering is synchronous and re-runs on every state change — including ones
+ * that don't touch the content, such as picking a new width. Memoise the tree
+ * by source so those renders don't re-parse and rebuild it. Bounded because a
+ * file can hold several widgets, which share this module scope.
+ */
+const TREE_CACHE_LIMIT = 8;
+const treeCache = new Map<string, FigmaDeclarativeNode>();
+
 export class MarkdownTreeRenderer {
   // New function: Convert markdown-it tokens to a React-like tree and render them.
   static renderMarkdownAsTree(markdown: string): FigmaDeclarativeNode {
-    const md = new MarkdownIt("default", {
-      html: true,
-      // Match HackMD: bare URLs become links, but no smart-quote substitution.
-      linkify: true,
-      typographer: false,
-    });
-
-    md.use(markdownitAbbr);
-    md.use(markdownitFootnote);
-    md.use(markdownitMark);
-    md.use(markdownitIns);
-    md.use(markdownitSub);
-    md.use(markdownitSup);
-    md.use(markdownitRuby);
-    md.use(emoji);
-    md.use(markdownitContainer, "success");
-    md.use(markdownitContainer, "info");
-    md.use(markdownitContainer, "warning");
-    md.use(markdownitContainer, "danger");
-    // The front matter body is rendered from the token instead of the callback.
-    md.use(markdownitFrontMatter, () => {});
+    const cached = treeCache.get(markdown);
+    if (cached) return cached;
 
     const tokens = md.parse(markdown, {});
-
     const treeResult = this.tokenToTree(tokens, 0);
-    return (
+    const tree = (
       <AutoLayout direction="vertical" width="fill-parent" spacing={10}>
         {treeResult.element}
       </AutoLayout>
     );
+
+    if (treeCache.size >= TREE_CACHE_LIMIT) {
+      treeCache.clear();
+    }
+    treeCache.set(markdown, tree);
+    return tree;
   }
 
   static renderBlockComponent(
@@ -96,6 +126,10 @@ export class MarkdownTreeRenderer {
           children
         );
       case "p":
+        // The common case is a single fill-parent Text (or inline row), which
+        // lays out identically without a wrapper — and a wrapper per paragraph
+        // is a large share of the node count on a long note.
+        if (children.length === 1) return children[0];
         return (
           <AutoLayout
             width="fill-parent"
@@ -316,31 +350,43 @@ export class MarkdownTreeRenderer {
             heading: { level },
           };
           const result = this.tokenToTree(tokens, index + 1, newStyle, ctx);
+          // A heading is nearly always one fill-parent Text, which lays out the
+          // same without a wrapper. One saved node per heading.
           elems.push(
-            <AutoLayout
-              key={tokenKey}
-              direction="horizontal"
-              width="fill-parent"
-              wrap
-            >
-              {result.element}
-            </AutoLayout>
+            result.element.length === 1 ? (
+              result.element[0]
+            ) : (
+              <AutoLayout
+                key={tokenKey}
+                direction="horizontal"
+                width="fill-parent"
+                wrap
+              >
+                {result.element}
+              </AutoLayout>
+            )
           );
           index = result.newIndex;
           break;
         }
         case "paragraph_open": {
           const result = this.tokenToTree(tokens, index + 1, style, ctx);
+          // Same for paragraphs — the single most common block on a note, so
+          // this wrapper alone was a large share of the total node count.
           elems.push(
-            <AutoLayout
-              key={tokenKey}
-              direction="horizontal"
-              width="fill-parent"
-              wrap
-              spacing={3}
-            >
-              {result.element}
-            </AutoLayout>
+            result.element.length === 1 ? (
+              result.element[0]
+            ) : (
+              <AutoLayout
+                key={tokenKey}
+                direction="horizontal"
+                width="fill-parent"
+                wrap
+                spacing={3}
+              >
+                {result.element}
+              </AutoLayout>
+            )
           );
           index = result.newIndex;
           break;
@@ -498,6 +544,7 @@ export class MarkdownTreeRenderer {
                 const listLevel = token.level + 1;
                 const ordered = ctx.list?.ordered === true;
                 const marker = ctx.list && ordered ? ctx.list.next++ : 0;
+                const bullet = BulletByLevel(listLevel);
                 elems.push(
                   <AutoLayout
                     key={tokenKey}
@@ -517,13 +564,19 @@ export class MarkdownTreeRenderer {
                       // so "1." and "57." line up with the item and never wrap.
                       <Text {...getTextStyle(style)}>{`${marker}.`}</Text>
                     ) : (
-                      <AutoLayout padding={{ top: 8 }}>
-                        <SVG src={DotByLevel(listLevel)} />
+                      // A character rather than an SVG: same look, one node
+                      // instead of two, and no vector parsing per item.
+                      <Text {...getTextStyle(style)} fill={bullet.fill}>
+                        {bullet.char}
+                      </Text>
+                    )}
+                    {result.element.length === 1 ? (
+                      result.element[0]
+                    ) : (
+                      <AutoLayout width="fill-parent" direction="vertical">
+                        {result.element}
                       </AutoLayout>
                     )}
-                    <AutoLayout width="fill-parent" direction="vertical">
-                      {result.element}
-                    </AutoLayout>
                   </AutoLayout>
                 );
                 index = result.newIndex;
@@ -667,6 +720,15 @@ export class MarkdownTreeRenderer {
     let currentStyle = { ...style };
     let currentText = "";
     let spanCounter = 0;
+    // Mirrors `spans`. A Text holding a single uniformly styled Span can carry
+    // that styling itself, so the Span becomes one node of pure overhead — and
+    // on a typical note nearly every Text is exactly that shape.
+    let soleSpan: SpanRecord | null = null;
+    let spanPushes = 0;
+    const recordSpan = (props: any, content: string) => {
+      spanPushes++;
+      soleSpan = spanPushes === 1 ? { props, content } : null;
+    };
 
     // A `Span` can only carry text styling, never a background or border. So
     // inline code / highlight / kbd — which need a fill — are rendered as small
@@ -681,11 +743,10 @@ export class MarkdownTreeRenderer {
 
     const flushText = () => {
       if (currentText) {
+        const props = getTextStyle(currentStyle, currentStyle.href);
+        recordSpan(props, currentText);
         spans.push(
-          <Span
-            key={`${parentKey}-span-${spanCounter++}`}
-            {...getTextStyle(currentStyle, currentStyle.href)}
-          >
+          <Span key={`${parentKey}-span-${spanCounter++}`} {...props}>
             {currentText}
           </Span>
         );
@@ -779,11 +840,10 @@ export class MarkdownTreeRenderer {
         currentText += text.slice(last, at);
         flushText();
         const href = `https://hackmd.io/@${match[2]}`;
+        const mentionProps = getTextStyle({ ...currentStyle, href }, href);
+        recordSpan(mentionProps, `@${match[2]}`);
         spans.push(
-          <Span
-            key={`${parentKey}-span-${spanCounter++}`}
-            {...getTextStyle({ ...currentStyle, href }, href)}
-          >
+          <Span key={`${parentKey}-span-${spanCounter++}`} {...mentionProps}>
             {`@${match[2]}`}
           </Span>
         );
@@ -798,6 +858,7 @@ export class MarkdownTreeRenderer {
       switch (token.type) {
         case "softbreak":
           flushText();
+          recordSpan({}, " ");
           spans.push(<Span key={`${parentKey}-span-${spanCounter++}`}> </Span>);
           index++;
           break;
@@ -821,11 +882,10 @@ export class MarkdownTreeRenderer {
               ([attr]: [string, string]) => attr === "src"
             )?.[1] || "";
           const alt = (token.content || "").trim();
+          const imgProps = getTextStyle({ ...currentStyle, href: src }, src);
+          recordSpan(imgProps, `🖼 ${alt || src}`);
           spans.push(
-            <Span
-              key={`${parentKey}-span-${spanCounter++}`}
-              {...getTextStyle({ ...currentStyle, href: src }, src)}
-            >
+            <Span key={`${parentKey}-span-${spanCounter++}`} {...imgProps}>
               {`🖼 ${alt || src}`}
             </Span>
           );
@@ -861,31 +921,31 @@ export class MarkdownTreeRenderer {
           break;
         }
 
-        case "footnote_ref":
+        case "footnote_ref": {
           flushText();
+          const fnProps = getTextStyle({ ...currentStyle, footnote: true });
+          recordSpan(fnProps, `[${token.meta.id + 1}]`);
           spans.push(
-            <Span
-              key={`${parentKey}-span-${spanCounter++}`}
-              {...getTextStyle({ ...currentStyle, footnote: true })}
-            >
-              [{token.meta.id + 1}]
+            <Span key={`${parentKey}-span-${spanCounter++}`} {...fnProps}>
+              {`[${token.meta.id + 1}]`}
             </Span>
           );
           index++;
           break;
+        }
 
-        case "emoji":
+        case "emoji": {
           flushText();
+          const emojiProps = getTextStyle(currentStyle);
+          recordSpan(emojiProps, token.content);
           spans.push(
-            <Span
-              key={`${parentKey}-span-${spanCounter++}`}
-              {...getTextStyle(currentStyle)}
-            >
+            <Span key={`${parentKey}-span-${spanCounter++}`} {...emojiProps}>
               {token.content}
             </Span>
           );
           index++;
           break;
+        }
 
         case "strong_open":
           flushText();
@@ -1012,16 +1072,30 @@ export class MarkdownTreeRenderer {
 
     // No inline box appeared: keep the single-Text path (proper text wrapping).
     if (pieces.length === 0) {
+      // One uniformly styled run — carry its styling on the Text and drop the
+      // Span entirely. This is the shape of almost every paragraph, heading and
+      // table cell, so it removes roughly a third of all nodes on a long note.
+      const single = soleSpan as SpanRecord | null;
       return {
-        element: (
-          <Text
-            key={parentKey}
-            width="fill-parent"
-            horizontalAlignText={align ?? "left"}
-          >
-            {spans}
-          </Text>
-        ),
+        element:
+          single && spans.length === 1 ? (
+            <Text
+              key={parentKey}
+              width="fill-parent"
+              horizontalAlignText={align ?? "left"}
+              {...single.props}
+            >
+              {single.content}
+            </Text>
+          ) : (
+            <Text
+              key={parentKey}
+              width="fill-parent"
+              horizontalAlignText={align ?? "left"}
+            >
+              {spans}
+            </Text>
+          ),
         newIndex: index,
       };
     }
