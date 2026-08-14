@@ -9,7 +9,7 @@ const post = (pluginMessage: Record<string, unknown>) => {
 function App() {
   // The widget tells us which panel to show and whether a token is already
   // stored. It never sends the token itself back to the iframe.
-  const [view, setView] = useState<"url" | "token">("url");
+  const [view, setView] = useState<"url" | "token" | "markdown">("url");
   const [hasToken, setHasToken] = useState(false);
   const [error, setError] = useState("");
   const [url, setUrl] = useState("");
@@ -21,7 +21,13 @@ function App() {
     const onMessage = (event: MessageEvent) => {
       const msg = event.data?.pluginMessage;
       if (msg?.type !== "init") return;
-      setView(msg.view === "token" ? "token" : "url");
+      setView(
+        msg.view === "token"
+          ? "token"
+          : msg.view === "markdown"
+          ? "markdown"
+          : "url"
+      );
       setHasToken(Boolean(msg.hasToken));
     };
     window.addEventListener("message", onMessage);
@@ -104,6 +110,24 @@ function App() {
     );
   }
 
+  if (view === "markdown") {
+    return (
+      <div className="App" ref={rootRef}>
+        <div className="field">
+          <label className="label">Paste Markdown</label>
+          <textarea
+            className="input textarea"
+            placeholder="# Title&#10;Paste Markdown to render it directly…"
+            value={markdown}
+            onChange={(e) => setMarkdown(e.target.value)}
+          />
+        </div>
+        {error && <p className="error">{error}</p>}
+        <button onClick={handleRenderMarkdown}>Render Markdown</button>
+      </div>
+    );
+  }
+
   return (
     <div className="App" ref={rootRef}>
       <div className="field">
@@ -121,25 +145,8 @@ function App() {
           ? "API token saved. Manage it from the gear icon in the toolbar."
           : "Public notes load right away. For private notes, add a token from the gear icon in the toolbar."}
       </p>
-      <button onClick={handleSubmit}>Load note</button>
-
-      <div className="divider">
-        <span>or</span>
-      </div>
-
-      <div className="field">
-        <label className="label">Paste Markdown</label>
-        <textarea
-          className="input textarea"
-          placeholder="# Title&#10;Paste Markdown to render it directly…"
-          value={markdown}
-          onChange={(e) => setMarkdown(e.target.value)}
-        />
-      </div>
       {error && <p className="error">{error}</p>}
-      <button className="secondary" onClick={handleRenderMarkdown}>
-        Render Markdown
-      </button>
+      <button onClick={handleSubmit}>Load note</button>
     </div>
   );
 }

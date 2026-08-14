@@ -101,6 +101,19 @@ export const NewNoteIcon = `<svg width='16' height='16' viewBox='0 0 24 24' fill
 <path d='M12 18v-6M9 15h6' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
 </svg>`;
 
+// Toolbar entry for loading a HackMD note by URL (a link/chain glyph).
+export const UrlLinkIcon = `<svg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+<path d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+</svg>`;
+
+// Toolbar entry for pasting Markdown (a document with text lines).
+export const MarkdownIcon = `<svg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M14 2v6h6' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+<path d='M16 13H8M16 17H8M10 9H8' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
+</svg>`;
+
 /**
  * Returns the appropriate dot icon based on the list nesting level.
  * Cycles back to primary style when level >= 5.

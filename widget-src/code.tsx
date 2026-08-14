@@ -8,7 +8,12 @@ import { clearToken, getToken, setToken } from "./utils/token";
 
 import { HackMDButton } from "./components/hackMDButton";
 import { ContentLayout } from "./components/contentLayout";
-import { GearIcon, NewNoteIcon, RefreshIcon } from "./components/icons";
+import {
+  GearIcon,
+  MarkdownIcon,
+  RefreshIcon,
+  UrlLinkIcon,
+} from "./components/icons";
 
 /** Widget width choices offered in the toolbar (value in px, as a string). */
 const WIDTH_OPTIONS = [
@@ -20,16 +25,29 @@ const WIDTH_OPTIONS = [
 const UI_WIDTH = 320;
 
 /** Opens the iframe and resolves once it posts a message back (or is closed). */
+type SettingsView = "url" | "token" | "markdown";
+
+const VIEW_TITLE: Record<SettingsView, string> = {
+  url: "Load a HackMD note",
+  token: "HackMD API token",
+  markdown: "Paste Markdown",
+};
+const VIEW_HEIGHT: Record<SettingsView, number> = {
+  url: 180,
+  token: 240,
+  markdown: 280,
+};
+
 const showSettingsUI = (
-  view: "url" | "token",
+  view: SettingsView,
   hasToken: boolean,
   onMessage: (msg: any) => Promise<void>
 ) =>
   new Promise<void>((resolve) => {
     figma.showUI(__html__, {
       width: UI_WIDTH,
-      height: view === "token" ? 240 : 180,
-      title: view === "token" ? "HackMD API token" : "Load a HackMD note",
+      height: VIEW_HEIGHT[view],
+      title: VIEW_TITLE[view],
     });
     figma.ui.postMessage({ type: "init", view, hasToken });
     figma.ui.onmessage = async (msg) => {
@@ -120,15 +138,10 @@ function HackMDViewer() {
     setContent(markdown);
   };
 
-  // Opens the input panel. Used both by the empty-state card and by the toolbar.
-  // The user can load a note by URL or paste markdown to render directly.
+  // Loads a note by URL. Used by the empty-state card and the toolbar's link icon.
   const openUrlSettings = async () => {
     const hasToken = Boolean(await getToken());
     await showSettingsUI("url", hasToken, async (msg) => {
-      if (msg.type === "markdown" && (msg.value || "").trim()) {
-        showPastedMarkdown(msg.value);
-        return;
-      }
       if (msg.type !== "url" || !msg.value) return;
       // Persist the token first: fetchHackMDContent reads it back.
       if (msg.token) await setToken(msg.token);
@@ -136,6 +149,16 @@ function HackMDViewer() {
       setNoteId("");
       setTeamPath("");
       await fetchHackMDContent(msg.value);
+    });
+  };
+
+  // Renders pasted markdown. Reached from the toolbar's markdown icon.
+  const openMarkdownSettings = async () => {
+    const hasToken = Boolean(await getToken());
+    await showSettingsUI("markdown", hasToken, async (msg) => {
+      if (msg.type === "markdown" && (msg.value || "").trim()) {
+        showPastedMarkdown(msg.value);
+      }
     });
   };
 
@@ -159,9 +182,15 @@ function HackMDViewer() {
         : []),
       {
         itemType: "action" as const,
-        propertyName: "open-url",
-        tooltip: "Load another note",
-        icon: NewNoteIcon,
+        propertyName: "load-url",
+        tooltip: "Load HackMD note",
+        icon: UrlLinkIcon,
+      },
+      {
+        itemType: "action" as const,
+        propertyName: "paste-markdown",
+        tooltip: "Paste Markdown",
+        icon: MarkdownIcon,
       },
       { itemType: "separator" as const },
       {
@@ -186,8 +215,10 @@ function HackMDViewer() {
         });
       } else if (propertyName === "token") {
         await openTokenSettings();
-      } else if (propertyName === "open-url") {
+      } else if (propertyName === "load-url") {
         await openUrlSettings();
+      } else if (propertyName === "paste-markdown") {
+        await openMarkdownSettings();
       } else if (propertyName === "width" && propertyValue) {
         setWidth(propertyValue);
       }
